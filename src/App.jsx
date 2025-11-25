@@ -82,7 +82,35 @@ export default function MultiplayerNinjaGame() {
     setRoomCode(code);
     setGameState('host');
 
-    peer.on('connection', (conn) => {
+    // Destroy old peer and create new one with room code as ID
+    if (peer) {
+      peer.destroy();
+    }
+
+    const hostPeer = new Peer(code, {
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+      }
+    });
+
+    hostPeer.on('open', (id) => {
+      console.log('Host Peer ID:', id);
+    });
+
+    hostPeer.on('error', (err) => {
+      console.error('Host peer error:', err);
+      if (err.type === 'unavailable-id') {
+        alert('Этот код уже занят, попробуй ещё раз!');
+        resetToMenu();
+      }
+    });
+
+    setPeer(hostPeer);
+
+    hostPeer.on('connection', (conn) => {
       console.log('Player connected');
       conn.on('open', () => {
         setIsConnected(true);
