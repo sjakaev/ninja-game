@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.3.0";
+const APP_VERSION = "1.3.1";
 
 // Animated Ninja Character Component
 const AnimatedChaser = ({ x, y, size, rotation, opacity, ability, isClone, vx, vy, onSurface, score }) => {
@@ -1166,66 +1166,53 @@ export default function NinjaGame() {
   // Main menu - mode selection
   if (gameState === 'menu') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 overflow-hidden relative">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 text-6xl animate-float opacity-20">🌟</div>
-          <div className="absolute top-40 right-20 text-4xl animate-float delay-200 opacity-20">⭐</div>
-          <div className="absolute bottom-32 left-20 text-5xl animate-float delay-300 opacity-20">✨</div>
-          <div className="absolute bottom-20 right-10 text-6xl animate-float delay-100 opacity-20">🌙</div>
-        </div>
-
-        <div className="glass rounded-3xl shadow-2xl p-10 max-w-lg w-full border-4 border-purple-500 animate-pulse-glow relative">
-          <div className="absolute top-4 right-4 version-badge bg-purple-600 text-white px-3 py-1 rounded-full">
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-slate-900 to-black flex items-center justify-center p-4">
+        <div className="bg-slate-800/90 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-purple-500/50 relative">
+          <div className="absolute top-3 right-3 text-xs bg-purple-600 text-white px-2 py-1 rounded">
             v{APP_VERSION}
           </div>
 
-          <div className="text-center mb-4">
-            <span className="text-8xl inline-block animate-ninja-run">🥷</span>
+          <div className="text-center mb-6">
+            <span className="text-7xl">🥷</span>
           </div>
 
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-red-500 via-yellow-400 to-red-500 bg-clip-text text-transparent mb-2 text-center animate-bounce-in">
+          <h1 className="text-3xl font-bold text-white mb-2 text-center">
             НИНДЗЯ ПОГОНЯ
           </h1>
 
-          <p className="text-purple-300 text-center mb-8 animate-slide-up">
+          <p className="text-gray-400 text-center mb-6">
             Выбери режим игры
           </p>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <button
               onClick={startSinglePlayer}
-              className="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white px-6 py-5 rounded-xl text-xl font-bold hover:scale-105 transition-all duration-300 shadow-lg btn-glow animate-slide-up delay-100 flex items-center justify-center gap-4"
+              className="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white px-5 py-4 rounded-xl text-lg font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-3"
             >
-              <span className="text-3xl">🎮</span>
+              <span className="text-2xl">🎮</span>
               <div className="text-left">
                 <div>Одиночная игра</div>
-                <div className="text-sm opacity-80 font-normal">Убегай от AI-ниндзя</div>
+                <div className="text-xs opacity-80 font-normal">Убегай от AI-ниндзя</div>
               </div>
             </button>
 
             <button
               onClick={() => { setGameMode('multi'); setGameState('mode-select'); }}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-5 rounded-xl text-xl font-bold hover:scale-105 transition-all duration-300 shadow-lg btn-glow-blue animate-slide-up delay-200 flex items-center justify-center gap-4"
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white px-5 py-4 rounded-xl text-lg font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-3"
             >
-              <span className="text-3xl">👥</span>
+              <span className="text-2xl">👥</span>
               <div className="text-left">
                 <div>Мультиплеер</div>
-                <div className="text-sm opacity-80 font-normal">Играй с другом онлайн</div>
+                <div className="text-xs opacity-80 font-normal">Играй с другом онлайн</div>
               </div>
             </button>
           </div>
 
-          <div className="mt-8 text-center animate-slide-up delay-300">
-            <div className="inline-flex items-center gap-4 text-gray-400 text-sm bg-slate-700/30 px-6 py-3 rounded-xl">
-              <div className="flex flex-col items-center">
-                <span className="text-2xl mb-1">🥷</span>
-                <span>Ниндзя</span>
-              </div>
-              <span className="text-purple-400 text-xl">VS</span>
-              <div className="flex flex-col items-center">
-                <span className="text-2xl mb-1">🎯</span>
-                <span>Курсор</span>
-              </div>
+          <div className="mt-6 text-center">
+            <div className="inline-flex items-center gap-3 text-gray-500 text-sm">
+              <span>🥷 Ниндзя</span>
+              <span className="text-purple-400">VS</span>
+              <span>🎯 Курсор</span>
             </div>
           </div>
         </div>
@@ -1236,84 +1223,69 @@ export default function NinjaGame() {
   // Multiplayer menu
   if (gameState === 'mode-select' && gameMode === 'multi') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 overflow-hidden relative">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 text-6xl animate-float opacity-20">🌟</div>
-          <div className="absolute top-40 right-20 text-4xl animate-float delay-200 opacity-20">⭐</div>
-          <div className="absolute bottom-32 left-20 text-5xl animate-float delay-300 opacity-20">✨</div>
-          <div className="absolute bottom-20 right-10 text-6xl animate-float delay-100 opacity-20">🌙</div>
-        </div>
-
-        <div className="glass rounded-3xl shadow-2xl p-10 max-w-md w-full border-4 border-purple-500 animate-pulse-glow relative">
-          <div className="absolute top-4 right-4 version-badge bg-purple-600 text-white px-3 py-1 rounded-full">
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-slate-900 to-black flex items-center justify-center p-4">
+        <div className="bg-slate-800/90 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-purple-500/50 relative">
+          <div className="absolute top-3 right-3 text-xs bg-purple-600 text-white px-2 py-1 rounded">
             v{APP_VERSION}
           </div>
 
           <div className="text-center mb-4">
-            <span className="text-6xl inline-block animate-float">👥</span>
+            <span className="text-5xl">👥</span>
           </div>
 
-          <h1 className="text-3xl font-bold text-white mb-2 text-center animate-bounce-in">
-            Мультиплеер
-          </h1>
+          <h1 className="text-2xl font-bold text-white mb-1 text-center">Мультиплеер</h1>
+          <p className="text-gray-400 text-center mb-5 text-sm">Играй с другом онлайн</p>
 
-          <p className="text-purple-300 text-center mb-6 animate-slide-up">
-            Играй с другом онлайн
-          </p>
-
-          <div className="mb-6 animate-slide-up delay-100">
-            <label className="text-gray-400 text-sm mb-2 block">Твоё имя</label>
+          <div className="mb-4">
+            <label className="text-gray-400 text-sm mb-1 block">Твоё имя</label>
             <input
               type="text"
               placeholder="Введи имя..."
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-700/50 text-white border-2 border-purple-500/50 focus:border-purple-400 outline-none text-lg transition-all duration-300"
+              className="w-full px-4 py-2.5 rounded-lg bg-slate-700 text-white border border-slate-600 focus:border-purple-400 outline-none"
             />
           </div>
 
           <button
             onClick={hostGame}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl text-xl font-bold hover:scale-105 transition-all duration-300 mb-4 shadow-lg btn-glow animate-slide-up delay-200 flex items-center justify-center gap-3"
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white px-5 py-3 rounded-lg text-lg font-bold hover:opacity-90 transition-opacity mb-3 flex items-center justify-center gap-2"
           >
-            <span className="text-2xl">🎮</span>
-            <span>Создать игру</span>
+            🎮 Создать игру
           </button>
 
-          <div className="relative my-6 animate-slide-up delay-300">
+          <div className="relative my-4">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-purple-500/30"></div>
+              <div className="w-full border-t border-slate-600"></div>
             </div>
             <div className="relative flex justify-center">
-              <span className="px-4 glass text-purple-400 text-sm rounded-full">или присоединись</span>
+              <span className="px-3 bg-slate-800 text-gray-500 text-sm">или</span>
             </div>
           </div>
 
-          <div className="mb-4 animate-slide-up delay-300">
-            <label className="text-gray-400 text-sm mb-2 block">Код комнаты</label>
+          <div className="mb-3">
+            <label className="text-gray-400 text-sm mb-1 block">Код комнаты</label>
             <input
               type="text"
               placeholder="XXXXXX"
               value={inputRoomCode}
               onChange={(e) => setInputRoomCode(e.target.value.toUpperCase())}
-              className="w-full px-4 py-3 rounded-xl bg-slate-700/50 text-white border-2 border-blue-500/50 focus:border-blue-400 outline-none text-lg uppercase tracking-widest text-center font-mono transition-all duration-300"
+              className="w-full px-4 py-2.5 rounded-lg bg-slate-700 text-white border border-slate-600 focus:border-blue-400 outline-none uppercase tracking-widest text-center font-mono"
             />
           </div>
 
           <button
             onClick={joinGame}
-            className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-4 rounded-xl text-xl font-bold hover:scale-105 transition-all duration-300 shadow-lg btn-glow-blue animate-slide-up delay-400 flex items-center justify-center gap-3"
+            className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-5 py-3 rounded-lg text-lg font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
           >
-            <span className="text-2xl">🚀</span>
-            <span>Присоединиться</span>
+            🚀 Присоединиться
           </button>
 
           <button
             onClick={resetToMenu}
-            className="w-full mt-4 bg-slate-700/50 text-white px-6 py-3 rounded-xl hover:bg-slate-600/50 transition-all duration-300 border border-slate-600 flex items-center justify-center gap-2"
+            className="w-full mt-3 bg-slate-700 text-gray-300 px-5 py-2.5 rounded-lg hover:bg-slate-600 transition-colors"
           >
-            <span>←</span>
-            <span>Назад</span>
+            ← Назад
           </button>
         </div>
       </div>
@@ -1323,66 +1295,50 @@ export default function NinjaGame() {
   // Waiting room (multiplayer)
   if ((gameState === 'host' || gameState === 'client') && !isConnected) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-200"></div>
-        </div>
-
-        <div className="glass rounded-3xl shadow-2xl p-10 max-w-md w-full border-4 border-purple-500 animate-pulse-glow relative">
-          <div className="absolute top-4 right-4 version-badge bg-purple-600 text-white px-3 py-1 rounded-full">
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-slate-900 to-black flex items-center justify-center p-4">
+        <div className="bg-slate-800/90 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-purple-500/50 relative">
+          <div className="absolute top-3 right-3 text-xs bg-purple-600 text-white px-2 py-1 rounded">
             v{APP_VERSION}
           </div>
 
-          <div className="text-center mb-6">
-            <span className="text-6xl inline-block animate-float">
-              {gameState === 'host' ? '⏳' : '🔌'}
-            </span>
+          <div className="text-center mb-4">
+            <span className="text-5xl">{gameState === 'host' ? '⏳' : '🔌'}</span>
           </div>
 
-          <h2 className="text-3xl font-bold text-white mb-6 text-center animate-bounce-in">
+          <h2 className="text-2xl font-bold text-white mb-5 text-center">
             {gameState === 'host' ? 'Ожидание игрока...' : 'Подключение...'}
           </h2>
 
           {gameState === 'host' && (
             <>
-              <div className="bg-slate-700/50 rounded-2xl p-6 mb-6 border-2 border-purple-400/50 animate-slide-up">
-                <p className="text-purple-300 text-sm mb-3 text-center">Код комнаты:</p>
-                <p className="text-5xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 tracking-widest mb-4 font-mono">
+              <div className="bg-slate-700 rounded-xl p-5 mb-4">
+                <p className="text-gray-400 text-sm mb-2 text-center">Код комнаты:</p>
+                <p className="text-4xl font-bold text-center text-purple-400 tracking-widest mb-3 font-mono">
                   {roomCode}
                 </p>
                 <button
                   onClick={copyRoomCode}
-                  className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white px-4 py-3 rounded-xl hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
+                  className="w-full bg-purple-600 text-white px-4 py-2.5 rounded-lg hover:bg-purple-500 transition-colors"
                 >
-                  <span>📋</span>
-                  <span>Скопировать код</span>
+                  📋 Скопировать код
                 </button>
               </div>
-              <p className="text-gray-400 text-center text-sm animate-slide-up delay-100">
-                Отправь этот код другу!
-              </p>
+              <p className="text-gray-500 text-center text-sm">Отправь этот код другу!</p>
             </>
           )}
 
           {gameState === 'client' && (
-            <div className="flex flex-col items-center gap-4 animate-slide-up">
-              <div className="relative">
-                <div className="animate-spin rounded-full h-20 w-20 border-4 border-purple-500/30 border-t-purple-500"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl">🥷</span>
-                </div>
-              </div>
-              <p className="text-purple-300">Ищем хоста...</p>
+            <div className="flex flex-col items-center gap-3">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500/30 border-t-purple-500"></div>
+              <p className="text-gray-400">Ищем хоста...</p>
             </div>
           )}
 
           <button
             onClick={resetToMenu}
-            className="w-full mt-6 bg-slate-700/50 text-white px-6 py-3 rounded-xl hover:bg-slate-600/50 transition-all duration-300 border border-slate-600 flex items-center justify-center gap-2"
+            className="w-full mt-5 bg-slate-700 text-gray-300 px-5 py-2.5 rounded-lg hover:bg-slate-600 transition-colors"
           >
-            <span>←</span>
-            <span>Назад</span>
+            ← Назад
           </button>
         </div>
       </div>
@@ -1392,70 +1348,49 @@ export default function NinjaGame() {
   // Role selection (multiplayer)
   if (isConnected && !role && gameMode === 'multi') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-red-500/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-200"></div>
-        </div>
-
-        <div className="glass rounded-3xl shadow-2xl p-10 max-w-2xl w-full border-4 border-purple-500 animate-pulse-glow relative">
-          <div className="absolute top-4 right-4 version-badge bg-purple-600 text-white px-3 py-1 rounded-full">
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-slate-900 to-black flex items-center justify-center p-4">
+        <div className="bg-slate-800/90 rounded-2xl shadow-2xl p-8 max-w-xl w-full border border-purple-500/50 relative">
+          <div className="absolute top-3 right-3 text-xs bg-purple-600 text-white px-2 py-1 rounded">
             v{APP_VERSION}
           </div>
 
           <div className="text-center mb-2">
-            <span className="text-6xl inline-block animate-bounce-in">🎭</span>
+            <span className="text-5xl">🎭</span>
           </div>
 
-          <h2 className="text-4xl font-bold text-white mb-4 text-center animate-bounce-in">
-            Выбери роль
-          </h2>
+          <h2 className="text-2xl font-bold text-white mb-2 text-center">Выбери роль</h2>
 
-          <div className="flex items-center justify-center gap-2 mb-8 animate-slide-up">
-            <span className="text-gray-400">Играешь с:</span>
-            <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full font-bold">
+          <div className="flex items-center justify-center gap-2 mb-5">
+            <span className="text-gray-400 text-sm">Играешь с:</span>
+            <span className="bg-purple-600 text-white px-3 py-0.5 rounded text-sm font-bold">
               {opponentName}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => selectRole('ninja')}
-              className="group bg-gradient-to-br from-red-600/80 to-red-900/80 p-8 rounded-2xl hover:scale-105 transition-all duration-300 border-4 border-red-500/50 hover:border-red-400 animate-slide-up relative overflow-hidden"
+              className="bg-gradient-to-b from-red-600 to-red-800 p-5 rounded-xl hover:opacity-90 transition-opacity border border-red-500/50"
             >
-              <div className="absolute inset-0 bg-gradient-to-t from-red-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="text-7xl mb-4 group-hover:animate-ninja-run">🥷</div>
-              <h3 className="text-2xl font-bold text-white mb-3">Ниндзя</h3>
-              <div className="text-gray-200 text-sm space-y-1">
-                <p className="flex items-center gap-2 justify-center">
-                  <span className="bg-white/20 px-2 py-0.5 rounded text-xs">SPACE</span>
-                  <span>Прыжок</span>
-                </p>
-                <p className="flex items-center gap-2 justify-center">
-                  <span className="bg-white/20 px-2 py-0.5 rounded text-xs">E</span>
-                  <span>Рывок</span>
-                </p>
-                <p className="flex items-center gap-2 justify-center">
-                  <span className="bg-white/20 px-2 py-0.5 rounded text-xs">Q</span>
-                  <span>Телепорт</span>
-                </p>
+              <div className="text-5xl mb-2">🥷</div>
+              <h3 className="text-lg font-bold text-white mb-2">Ниндзя</h3>
+              <div className="text-gray-200 text-xs space-y-1">
+                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">SPACE</span> Прыжок</p>
+                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">E</span> Рывок</p>
+                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">Q</span> Телепорт</p>
               </div>
             </button>
 
             <button
               onClick={() => selectRole('cursor')}
-              className="group bg-gradient-to-br from-blue-600/80 to-blue-900/80 p-8 rounded-2xl hover:scale-105 transition-all duration-300 border-4 border-blue-500/50 hover:border-blue-400 animate-slide-up delay-100 relative overflow-hidden"
+              className="bg-gradient-to-b from-blue-600 to-blue-800 p-5 rounded-xl hover:opacity-90 transition-opacity border border-blue-500/50"
             >
-              <div className="absolute inset-0 bg-gradient-to-t from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="text-7xl mb-4 group-hover:animate-float">🎯</div>
-              <h3 className="text-2xl font-bold text-white mb-3">Курсор</h3>
-              <div className="text-gray-200 text-sm">
-                <p className="mb-2">Управляй курсором мышкой</p>
-                <p className="flex items-center gap-2 justify-center">
-                  <span className="bg-white/20 px-2 py-0.5 rounded text-xs">🖱️</span>
-                  <span>Убегай!</span>
-                </p>
-                <p className="mt-2 text-yellow-300/80 text-xs">Продержись как можно дольше!</p>
+              <div className="text-5xl mb-2">🎯</div>
+              <h3 className="text-lg font-bold text-white mb-2">Курсор</h3>
+              <div className="text-gray-200 text-xs">
+                <p className="mb-1">Управляй мышкой</p>
+                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">🖱️</span> Убегай!</p>
+                <p className="mt-1 text-yellow-300/80">Продержись дольше!</p>
               </div>
             </button>
           </div>
@@ -1473,27 +1408,27 @@ export default function NinjaGame() {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
         {/* HUD - Top */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-4">
-          <div className="bg-black/80 backdrop-blur-sm border-2 border-yellow-500 px-6 py-2 rounded-full text-white font-bold text-xl">
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3">
+          <div className="bg-black/80 border border-yellow-500 px-4 py-1.5 rounded-full text-white font-bold text-lg">
             ⭐ {score}
           </div>
           {currentAbility && isSinglePlayer && (
-            <div className={`${abilitiesFull[currentAbility]?.color || 'bg-red-500'} px-4 py-2 rounded-full text-white font-bold animate-pulse border-2 border-white`}>
+            <div className={`${abilitiesFull[currentAbility]?.color || 'bg-red-500'} px-3 py-1.5 rounded-full text-white font-bold text-sm`}>
               {abilitiesFull[currentAbility]?.emoji} {abilitiesFull[currentAbility]?.name}
             </div>
           )}
           {currentAbility && !isSinglePlayer && (
-            <div className="bg-red-600 px-4 py-2 rounded-full text-white font-bold animate-pulse">
+            <div className="bg-red-600 px-3 py-1.5 rounded-full text-white font-bold text-sm">
               {abilitiesSimple[currentAbility]?.emoji} {abilitiesSimple[currentAbility]?.name}
             </div>
           )}
           {timeScale < 1 && (
-            <div className="bg-orange-500 px-4 py-2 rounded-full text-white font-bold animate-pulse">
+            <div className="bg-orange-500 px-3 py-1.5 rounded-full text-white font-bold text-sm">
               ⏱️ ЗАМЕДЛЕНИЕ
             </div>
           )}
           {!isSinglePlayer && (
-            <div className="bg-purple-600/80 px-4 py-2 rounded-full text-white">
+            <div className="bg-purple-600/80 px-3 py-1.5 rounded-full text-white text-sm">
               vs <span className="font-bold">{opponentName}</span>
             </div>
           )}
@@ -1570,52 +1505,17 @@ export default function NinjaGame() {
               />
             ))}
 
-            {/* Cursor - Glowing orb */}
+            {/* Cursor */}
             <div
-              className="absolute pointer-events-none z-30"
+              className="absolute pointer-events-none z-30 rounded-full bg-yellow-400"
               style={{
-                left: mousePos.x - CURSOR_SIZE,
-                top: mousePos.y - CURSOR_SIZE,
-                width: CURSOR_SIZE * 2,
-                height: CURSOR_SIZE * 2
+                left: mousePos.x - CURSOR_SIZE / 2,
+                top: mousePos.y - CURSOR_SIZE / 2,
+                width: CURSOR_SIZE,
+                height: CURSOR_SIZE,
+                boxShadow: '0 0 15px rgba(251, 191, 36, 0.8)'
               }}
-            >
-              {/* Outer glow rings */}
-              <div
-                className="absolute inset-0 rounded-full animate-ping"
-                style={{
-                  background: 'radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, transparent 70%)',
-                  animationDuration: '1.5s'
-                }}
-              />
-              <div
-                className="absolute rounded-full"
-                style={{
-                  inset: '15%',
-                  background: 'radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%)',
-                  boxShadow: '0 0 60px rgba(251, 191, 36, 0.6), 0 0 100px rgba(251, 191, 36, 0.3)'
-                }}
-              />
-              {/* Main orb */}
-              <div
-                className="absolute rounded-full"
-                style={{
-                  inset: '30%',
-                  background: 'radial-gradient(circle at 30% 30%, #fef3c7 0%, #fbbf24 40%, #f59e0b 100%)',
-                  boxShadow: '0 0 20px rgba(251, 191, 36, 0.9), inset 0 0 10px rgba(255, 255, 255, 0.5)'
-                }}
-              />
-              {/* Inner highlight */}
-              <div
-                className="absolute rounded-full bg-white/80"
-                style={{
-                  top: '35%',
-                  left: '35%',
-                  width: '15%',
-                  height: '15%'
-                }}
-              />
-            </div>
+            />
 
             {/* Clones */}
             {clones.map(clone => {
@@ -1685,12 +1585,10 @@ export default function NinjaGame() {
 
             {/* Wall indicators */}
             {chaser.onSurface === 'left_wall' && (
-              <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-3 h-48 bg-green-400 opacity-80 animate-pulse shadow-lg"
-                   style={{ boxShadow: '0 0 20px rgba(74, 222, 128, 0.8)' }} />
+              <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-2 h-32 bg-green-400 opacity-70" />
             )}
             {chaser.onSurface === 'right_wall' && (
-              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-48 bg-green-400 opacity-80 animate-pulse shadow-lg"
-                   style={{ boxShadow: '0 0 20px rgba(74, 222, 128, 0.8)' }} />
+              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-2 h-32 bg-green-400 opacity-70" />
             )}
 
             {/* Ground with glow */}
