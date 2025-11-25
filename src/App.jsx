@@ -1,318 +1,106 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.3.1";
+const APP_VERSION = "1.4.0";
 
-// Animated Ninja Character Component
-const AnimatedChaser = ({ x, y, size, rotation, opacity, ability, isClone, vx, vy, onSurface, score }) => {
-  const runCycle = Math.sin((score || 0) * 0.3) * 25;
-  const armSwing = Math.sin((score || 0) * 0.4) * 30;
-  const isRunning = Math.abs(vx || 0) > 1;
-  const isJumping = !onSurface && Math.abs(vy || 0) > 2;
-  const isOnWall = onSurface === 'left_wall' || onSurface === 'right_wall';
+// Simplified Ninja Character - smoother animations
+const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurface, animTime }) => {
+  // Use animTime for smooth animation (passed from game loop)
+  const speed = Math.sqrt((vx || 0) ** 2 + (vy || 0) ** 2);
+  const isMoving = speed > 0.5;
+  const isInAir = !onSurface;
+
+  // Animation cycles based on smooth time
+  const t = animTime * 0.01;
+  const runPhase = Math.sin(t * 8) * (isMoving ? 1 : 0);
 
   const bodyColor = isClone ? '#ec4899' : '#dc2626';
   const headColor = '#fbbf24';
 
-  const getLeftArmRotation = () => isJumping ? -60 : (ability === 'DASH' ? -90 : (isRunning ? armSwing : 10));
-  const getRightArmRotation = () => isJumping ? 60 : (ability === 'DASH' ? 90 : (isRunning ? -armSwing : -10));
-  const getLeftLegRotation = () => isJumping ? -30 : (isRunning || isOnWall ? -runCycle * 1.8 : 5);
-  const getRightLegRotation = () => isJumping ? 30 : (isRunning || isOnWall ? runCycle * 1.8 : -5);
+  // Calculate facing direction from velocity
+  const facingRight = (vx || 0) >= 0;
+
+  // Leg animation
+  const leftLegAngle = isInAir ? -20 : runPhase * 35;
+  const rightLegAngle = isInAir ? 20 : -runPhase * 35;
+
+  // Arm animation
+  const leftArmAngle = isInAir ? -45 : -runPhase * 25;
+  const rightArmAngle = isInAir ? 45 : runPhase * 25;
+
+  // Body bob when running
+  const bodyBob = isMoving && !isInAir ? Math.abs(Math.sin(t * 16)) * 2 : 0;
 
   return (
     <div
       className="absolute pointer-events-none"
       style={{
-        left: x - size * 1.2,
-        top: y - size * 1.2,
-        width: size * 2.4,
-        height: size * 2.4,
+        left: x,
+        top: y,
+        transform: `translate(-50%, -50%) scaleX(${facingRight ? 1 : -1})`,
         opacity,
-        transform: `rotate(${rotation}deg)`,
-        transition: 'all 0.1s ease-out'
+        width: size * 2,
+        height: size * 2,
       }}
     >
-      {ability && (
-        <div
-          className="absolute inset-0 rounded-full"
-          style={{
-            background: `radial-gradient(circle, ${bodyColor}60, transparent 70%)`,
-            transform: 'scale(1.5)',
-            animation: 'pulse 1s infinite'
-          }}
-        />
-      )}
+      <svg viewBox="0 0 100 100" width={size * 2} height={size * 2}>
+        {/* Shadow */}
+        <ellipse cx="50" cy="92" rx={isInAir ? 8 : 15} ry="4" fill="rgba(0,0,0,0.3)" />
 
-      <div
-        className="relative w-full h-full flex items-center justify-center"
-        style={{
-          filter: ability === 'GHOST' ? 'blur(3px) opacity(0.5)' : 'drop-shadow(0 4px 6px rgba(0,0,0,0.4))',
-          transform: ability === 'VORTEX' ? `rotate(${(score || 0) * 10}deg)` : 'none'
-        }}
-      >
-        <div
-          className="relative"
-          style={{
-            transform: `rotate(-${rotation}deg) scale(${ability === 'GROW' ? 1.3 : 0.85})`,
-            transition: 'transform 0.2s',
-            width: size,
-            height: size
-          }}
-        >
-          {/* Head */}
-          <div
-            className="absolute rounded-full"
-            style={{
-              width: size * 0.36,
-              height: size * 0.36,
-              backgroundColor: headColor,
-              borderColor: '#92400e',
-              borderWidth: '2px',
-              borderStyle: 'solid',
-              left: '50%',
-              top: '5%',
-              transform: `translateX(-50%) ${isRunning ? `translateY(${Math.sin((score || 0) * 0.6) * 1}px)` : ''}`,
-              boxShadow: '0 3px 6px rgba(0,0,0,0.4)',
-              zIndex: 10
-            }}
-          >
-            {/* Eyes */}
-            {[0.28, 0.72].map((leftPos, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full bg-white"
-                style={{
-                  top: '40%',
-                  left: `${leftPos * 100}%`,
-                  transform: 'translateX(-50%)',
-                  width: size * 0.08,
-                  height: size * 0.08,
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
-                }}
-              >
-                <div
-                  className="absolute bg-black rounded-full"
-                  style={{
-                    top: ability ? '25%' : '35%',
-                    left: '30%',
-                    width: '45%',
-                    height: '45%'
-                  }}
-                />
-              </div>
-            ))}
+        {/* Left Leg */}
+        <g transform={`rotate(${leftLegAngle}, 42, 60)`}>
+          <rect x="38" y="60" width="8" height="22" rx="4" fill={bodyColor} />
+          <ellipse cx="42" cy="84" rx="6" ry="4" fill="#1f2937" />
+        </g>
 
-            {/* Mouth */}
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '25%',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: size * 0.14,
-                height: size * 0.05,
-                borderBottom: '2.5px solid #000',
-                borderRadius: ability || isRunning ? '0 0 50% 50%' : '50% 50% 0 0'
-              }}
-            />
+        {/* Right Leg */}
+        <g transform={`rotate(${rightLegAngle}, 58, 60)`}>
+          <rect x="54" y="60" width="8" height="22" rx="4" fill={bodyColor} />
+          <ellipse cx="58" cy="84" rx="6" ry="4" fill="#1f2937" />
+        </g>
 
-            {/* Headband */}
-            <div
-              style={{
-                position: 'absolute',
-                top: '30%',
-                left: 0,
-                right: 0,
-                height: size * 0.08,
-                backgroundColor: bodyColor,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
-              }}
-            />
+        {/* Body */}
+        <rect x="35" y={38 - bodyBob} width="30" height="28" rx="6" fill={bodyColor} />
+        <rect x="35" y={52 - bodyBob} width="30" height="4" fill="#1f2937" />
 
-            {/* Headband knot */}
-            <div
-              style={{
-                position: 'absolute',
-                top: '32%',
-                right: '-12%',
-                width: size * 0.12,
-                height: size * 0.05,
-                backgroundColor: bodyColor,
-                borderRadius: '2px',
-                transform: isRunning ? `rotate(${Math.sin((score || 0) * 0.4) * 15}deg)` : 'rotate(0deg)',
-                boxShadow: '0 2px 3px rgba(0,0,0,0.3)'
-              }}
-            />
-          </div>
+        {/* Left Arm */}
+        <g transform={`rotate(${leftArmAngle}, 35, 42)`}>
+          <rect x="25" y={40 - bodyBob} width="8" height="18" rx="4" fill={bodyColor} />
+          <circle cx="29" cy={60 - bodyBob} r="5" fill={headColor} />
+        </g>
 
-          {/* Body */}
-          <div
-            style={{
-              position: 'absolute',
-              width: size * 0.32,
-              height: size * 0.42,
-              backgroundColor: bodyColor,
-              left: '50%',
-              top: '35%',
-              transform: 'translateX(-50%)',
-              borderRadius: '8px',
-              boxShadow: '0 4px 8px rgba(0,0,0,0.5)',
-              border: '1px solid rgba(0,0,0,0.3)'
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '30%',
-                left: 0,
-                right: 0,
-                height: size * 0.04,
-                backgroundColor: '#1f2937',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.3)'
-              }}
-            />
-          </div>
+        {/* Right Arm */}
+        <g transform={`rotate(${rightArmAngle}, 65, 42)`}>
+          <rect x="67" y={40 - bodyBob} width="8" height="18" rx="4" fill={bodyColor} />
+          <circle cx="71" cy={60 - bodyBob} r="5" fill={headColor} />
+        </g>
 
-          {/* Arms */}
-          {[
-            {side: 'left', x: '28%', rotation: getLeftArmRotation()},
-            {side: 'right', x: '72%', rotation: getRightArmRotation()}
-          ].map((arm, i) => (
-            <div
-              key={i}
-              style={{
-                position: 'absolute',
-                width: size * 0.12,
-                height: size * 0.36,
-                left: arm.x,
-                transform: `translateX(-50%) rotate(${arm.rotation}deg)`,
-                top: '42%',
-                transformOrigin: 'top center',
-                transition: 'transform 0.1s'
-              }}
-            >
-              <div style={{
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                backgroundColor: bodyColor,
-                borderRadius: '50%',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.4)'
-              }} />
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '-10%',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: size * 0.14,
-                  height: size * 0.14,
-                  backgroundColor: headColor,
-                  borderRadius: '50%',
-                  boxShadow: '0 2px 3px rgba(0,0,0,0.3)'
-                }}
-              />
-            </div>
-          ))}
+        {/* Head */}
+        <circle cx="50" cy={28 - bodyBob} r="16" fill={headColor} stroke="#92400e" strokeWidth="2" />
 
-          {/* Legs */}
-          {[
-            {side: 'left', x: '38%', rotation: getLeftLegRotation()},
-            {side: 'right', x: '62%', rotation: getRightLegRotation()}
-          ].map((leg, i) => (
-            <div
-              key={i}
-              style={{
-                position: 'absolute',
-                width: size * 0.14,
-                height: size * 0.36,
-                left: leg.x,
-                transform: `translateX(-50%) rotate(${leg.rotation}deg)`,
-                top: '70%',
-                transformOrigin: 'top center',
-                transition: 'transform 0.1s'
-              }}
-            >
-              <div style={{
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                backgroundColor: bodyColor,
-                borderRadius: '50%',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.4)'
-              }} />
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '-8%',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: size * 0.18,
-                  height: size * 0.12,
-                  backgroundColor: '#1f2937',
-                  borderRadius: '50%',
-                  boxShadow: '0 3px 5px rgba(0,0,0,0.5)',
-                  border: '1px solid #000'
-                }}
-              />
-            </div>
-          ))}
+        {/* Headband */}
+        <rect x="34" y={24 - bodyBob} width="32" height="6" fill={bodyColor} />
+        <rect x="66" y={23 - bodyBob} width="10" height="4" rx="2" fill={bodyColor}
+          transform={`rotate(${isMoving ? Math.sin(t * 6) * 20 : 0}, 66, ${25 - bodyBob})`} />
 
-          {/* Ability effects */}
-          {ability === 'DASH' && (
-            <div style={{ position: 'absolute', inset: 0 }}>
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    position: 'absolute',
-                    left: `-${i * 12}%`,
-                    top: '35%',
-                    width: '3px',
-                    height: '30%',
-                    backgroundColor: '#ef4444',
-                    opacity: 0.8 - i * 0.15,
-                    borderRadius: '2px'
-                  }}
-                />
-              ))}
-            </div>
-          )}
+        {/* Eyes */}
+        <circle cx="44" cy={26 - bodyBob} r="4" fill="white" />
+        <circle cx="56" cy={26 - bodyBob} r="4" fill="white" />
+        <circle cx={45 + (isMoving ? 1 : 0)} cy={27 - bodyBob} r="2" fill="black" />
+        <circle cx={57 + (isMoving ? 1 : 0)} cy={27 - bodyBob} r="2" fill="black" />
 
-          {ability === 'VORTEX' && (
-            <>
-              <div
-                className="absolute border-4 border-cyan-400 rounded-full animate-spin"
-                style={{ inset: '-30%', opacity: 0.7 }}
-              />
-              <div
-                className="absolute border-3 border-cyan-300 rounded-full"
-                style={{ inset: '-50%', opacity: 0.5, animation: 'spin 0.8s linear infinite reverse' }}
-              />
-            </>
-          )}
+        {/* Mouth */}
+        <path d={`M 45 ${34 - bodyBob} Q 50 ${ability ? 38 : 32 - bodyBob} 55 ${34 - bodyBob}`}
+          stroke="black" strokeWidth="2" fill="none" />
 
-          {ability === 'TELEPORT' && (
-            <div style={{ position: 'absolute', inset: 0 }}>
-              {[...Array(8)].map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    position: 'absolute',
-                    left: `${50 + Math.cos(i * Math.PI / 4) * 60}%`,
-                    top: `${50 + Math.sin(i * Math.PI / 4) * 60}%`,
-                    width: '4px',
-                    height: '4px',
-                    backgroundColor: '#a855f7',
-                    borderRadius: '50%',
-                    boxShadow: '0 0 6px #a855f7'
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+        {/* Ability glow */}
+        {ability && (
+          <circle cx="50" cy="50" r="45" fill="none" stroke={bodyColor} strokeWidth="3" opacity="0.5">
+            <animate attributeName="r" values="40;50;40" dur="0.5s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.5;0.2;0.5" dur="0.5s" repeatCount="indefinite" />
+          </circle>
+        )}
+      </svg>
     </div>
   );
 };
@@ -345,6 +133,7 @@ export default function NinjaGame() {
   const [currentAbility, setCurrentAbility] = useState(null);
   const [abilityTimer, setAbilityTimer] = useState(0);
   const [timeScale, setTimeScale] = useState(1);
+  const [animTime, setAnimTime] = useState(0);
 
   const gameAreaRef = useRef(null);
   const animationRef = useRef(null);
@@ -630,6 +419,7 @@ export default function NinjaGame() {
     setTrails([]);
     setCurrentAbility(null);
     setTimeScale(1);
+    setAnimTime(0);
     lastAbilityTime.current = 0;
     lastTime.current = Date.now();
   };
@@ -771,6 +561,9 @@ export default function NinjaGame() {
       const deltaTime = Math.min((now - lastTime.current) / 16, 2);
       lastTime.current = now;
       const dt = deltaTime * timeScale;
+
+      // Update animation time smoothly
+      setAnimTime(prev => prev + deltaTime * 16);
 
       setChaser(prev => {
         let newChaser = { ...prev };
@@ -1529,14 +1322,13 @@ export default function NinjaGame() {
                   x={clone.x}
                   y={clone.y}
                   size={CHASER_SIZE}
-                  rotation={cloneAngle + 90}
                   opacity={opacity}
                   ability={null}
                   isClone={true}
                   vx={clone.vx}
                   vy={clone.vy}
                   onSurface={clone.onSurface}
-                  score={score}
+                  animTime={animTime}
                 />
               );
             })}
@@ -1547,14 +1339,13 @@ export default function NinjaGame() {
                 x={chaser.x}
                 y={chaser.y}
                 size={chaserSize}
-                rotation={chaser.rotation}
                 opacity={chaserOpacity}
                 ability={currentAbility}
                 isClone={false}
                 vx={chaser.vx}
                 vy={chaser.vy}
                 onSurface={chaser.onSurface}
-                score={score}
+                animTime={animTime}
               />
             ) : (
               <div
