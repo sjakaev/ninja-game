@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.3.0";
 
 // Animated Ninja Character Component
 const AnimatedChaser = ({ x, y, size, rotation, opacity, ability, isClone, vx, vy, onSurface, score }) => {
@@ -352,8 +352,23 @@ export default function NinjaGame() {
   const lastTime = useRef(Date.now());
   const lastAbilityTime = useRef(0);
 
-  const GAME_WIDTH = 900;
-  const GAME_HEIGHT = 600;
+  // Dynamic game size for fullscreen
+  const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
+
+  useEffect(() => {
+    const updateSize = () => {
+      setGameSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  const GAME_WIDTH = gameSize.width;
+  const GAME_HEIGHT = gameSize.height;
   const GRAVITY = 0.6;
   const CHASER_SIZE = 45;
   const CURSOR_SIZE = 24;
@@ -1456,73 +1471,68 @@ export default function NinjaGame() {
     const isSinglePlayer = gameState === 'singleplayer';
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center p-4">
-        <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 max-w-6xl w-full">
-          <div className="text-center mb-4">
-            <h1 className="text-4xl font-bold text-white mb-3">
-              {isSinglePlayer ? '🎮 Одиночная игра' : (role === 'ninja' ? '🥷 Ты - Ниндзя' : '🎯 Ты - Курсор')}
-            </h1>
-            <div className="flex justify-center gap-3 text-lg flex-wrap items-center">
-              <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-2 rounded-xl text-white font-bold">
-                ⭐ Счёт: {score}
-              </div>
-              {!isSinglePlayer && (
-                <div className="bg-purple-600 px-4 py-2 rounded-xl text-white">
-                  Противник: <span className="font-bold">{opponentName}</span>
-                </div>
-              )}
-              {currentAbility && isSinglePlayer && (
-                <div className={`${abilitiesFull[currentAbility]?.color || 'bg-red-500'} px-5 py-2 rounded-xl text-white font-bold animate-pulse ring-2 ring-white`}>
-                  {abilitiesFull[currentAbility]?.emoji} {abilitiesFull[currentAbility]?.name}
-                </div>
-              )}
-              {currentAbility && !isSinglePlayer && (
-                <div className="bg-red-600 px-4 py-2 rounded-xl text-white font-bold animate-pulse">
-                  {abilitiesSimple[currentAbility]?.emoji} {abilitiesSimple[currentAbility]?.name}
-                </div>
-              )}
-              {chaser.onSurface && isSinglePlayer && (
-                <div className="bg-green-600 px-4 py-2 rounded-xl text-white text-sm font-semibold">
-                  📍 {chaser.onSurface === 'ground' ? 'Земля' :
-                      chaser.onSurface === 'left_wall' ? 'Левая стена' :
-                      chaser.onSurface === 'right_wall' ? 'Правая стена' : 'Потолок'}
-                </div>
-              )}
-              {timeScale < 1 && (
-                <div className="bg-orange-500 px-4 py-2 rounded-xl text-white font-bold animate-pulse">
-                  ⏱️ ЗАМЕДЛЕНИЕ
-                </div>
-              )}
-            </div>
+      <div className="fixed inset-0 bg-black flex items-center justify-center">
+        {/* HUD - Top */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-4">
+          <div className="bg-black/80 backdrop-blur-sm border-2 border-yellow-500 px-6 py-2 rounded-full text-white font-bold text-xl">
+            ⭐ {score}
           </div>
+          {currentAbility && isSinglePlayer && (
+            <div className={`${abilitiesFull[currentAbility]?.color || 'bg-red-500'} px-4 py-2 rounded-full text-white font-bold animate-pulse border-2 border-white`}>
+              {abilitiesFull[currentAbility]?.emoji} {abilitiesFull[currentAbility]?.name}
+            </div>
+          )}
+          {currentAbility && !isSinglePlayer && (
+            <div className="bg-red-600 px-4 py-2 rounded-full text-white font-bold animate-pulse">
+              {abilitiesSimple[currentAbility]?.emoji} {abilitiesSimple[currentAbility]?.name}
+            </div>
+          )}
+          {timeScale < 1 && (
+            <div className="bg-orange-500 px-4 py-2 rounded-full text-white font-bold animate-pulse">
+              ⏱️ ЗАМЕДЛЕНИЕ
+            </div>
+          )}
+          {!isSinglePlayer && (
+            <div className="bg-purple-600/80 px-4 py-2 rounded-full text-white">
+              vs <span className="font-bold">{opponentName}</span>
+            </div>
+          )}
+        </div>
 
-          <div
-            ref={gameAreaRef}
-            className="relative bg-gradient-to-b from-sky-400 via-sky-300 to-green-400 rounded-2xl overflow-hidden cursor-none border-4 border-slate-700 shadow-2xl"
-            style={{
-              width: '100%',
-              maxWidth: `${GAME_WIDTH}px`,
-              height: `${GAME_HEIGHT}px`,
-              margin: '0 auto',
-              filter: timeScale < 1 ? 'hue-rotate(30deg)' : 'none'
-            }}
-          >
-            {/* Trails */}
+        {/* Back button */}
+        <button
+          onClick={resetToMenu}
+          className="absolute top-4 left-4 z-50 bg-black/80 backdrop-blur-sm border border-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
+        >
+          ← Меню
+        </button>
+
+        {/* Game Area - Fullscreen */}
+        <div
+          ref={gameAreaRef}
+          className="relative w-full h-full overflow-hidden cursor-none"
+          style={{
+            background: 'linear-gradient(to bottom, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+            filter: timeScale < 1 ? 'hue-rotate(30deg) saturate(1.5)' : 'none'
+          }}
+        >
+            {/* Trails with glow */}
             {trails.map(trail => (
               <div
                 key={trail.id}
-                className="absolute bg-red-400 rounded-full pointer-events-none"
+                className="absolute rounded-full pointer-events-none"
                 style={{
-                  left: trail.x - trail.size / 4,
-                  top: trail.y - trail.size / 4,
-                  width: trail.size / 2,
-                  height: trail.size / 2,
-                  opacity: trail.life * 0.4
+                  left: trail.x - trail.size / 3,
+                  top: trail.y - trail.size / 3,
+                  width: trail.size / 1.5,
+                  height: trail.size / 1.5,
+                  background: `radial-gradient(circle, rgba(239, 68, 68, ${trail.life * 0.6}) 0%, transparent 70%)`,
+                  boxShadow: `0 0 ${trail.size}px rgba(239, 68, 68, ${trail.life * 0.4})`
                 }}
               />
             ))}
 
-            {/* Particles */}
+            {/* Particles with glow */}
             {particles.map(p => (
               <div
                 key={p.id}
@@ -1533,47 +1543,78 @@ export default function NinjaGame() {
                   width: p.size,
                   height: p.size,
                   backgroundColor: p.color,
-                  opacity: p.life * 0.8
+                  opacity: p.life * 0.9,
+                  boxShadow: `0 0 ${p.size * 2}px ${p.color}`
                 }}
               />
             ))}
 
-            {/* Shockwaves */}
+            {/* Shockwaves - neon rings */}
             {shockwaves.map(wave => (
               <div
                 key={wave.id}
-                className="absolute border-4 border-indigo-500 rounded-full pointer-events-none"
+                className="absolute rounded-full pointer-events-none"
                 style={{
                   left: wave.x - wave.radius,
                   top: wave.y - wave.radius,
                   width: wave.radius * 2,
                   height: wave.radius * 2,
-                  opacity: (1 - wave.radius / wave.maxRadius) * 0.7,
-                  boxShadow: '0 0 20px rgba(99, 102, 241, 0.5)'
+                  border: '3px solid rgba(139, 92, 246, 0.8)',
+                  opacity: (1 - wave.radius / wave.maxRadius) * 0.9,
+                  boxShadow: `
+                    0 0 20px rgba(139, 92, 246, 0.6),
+                    0 0 40px rgba(139, 92, 246, 0.4),
+                    inset 0 0 20px rgba(139, 92, 246, 0.3)
+                  `
                 }}
               />
             ))}
 
-            {/* Cursor */}
+            {/* Cursor - Glowing orb */}
             <div
               className="absolute pointer-events-none z-30"
               style={{
-                left: mousePos.x - CURSOR_SIZE / 2,
-                top: mousePos.y - CURSOR_SIZE / 2,
-                width: CURSOR_SIZE,
-                height: CURSOR_SIZE
+                left: mousePos.x - CURSOR_SIZE,
+                top: mousePos.y - CURSOR_SIZE,
+                width: CURSOR_SIZE * 2,
+                height: CURSOR_SIZE * 2
               }}
             >
+              {/* Outer glow rings */}
               <div
-                className="absolute rounded-full border-4 border-yellow-600"
+                className="absolute inset-0 rounded-full animate-ping"
                 style={{
-                  inset: 0,
-                  background: 'radial-gradient(circle, #fbbf24 0%, #f59e0b 100%)',
-                  boxShadow: '0 0 30px rgba(251, 191, 36, 0.9)'
+                  background: 'radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, transparent 70%)',
+                  animationDuration: '1.5s'
                 }}
-              >
-                <div className="absolute w-3 h-3 bg-yellow-50 rounded-full top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-              </div>
+              />
+              <div
+                className="absolute rounded-full"
+                style={{
+                  inset: '15%',
+                  background: 'radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%)',
+                  boxShadow: '0 0 60px rgba(251, 191, 36, 0.6), 0 0 100px rgba(251, 191, 36, 0.3)'
+                }}
+              />
+              {/* Main orb */}
+              <div
+                className="absolute rounded-full"
+                style={{
+                  inset: '30%',
+                  background: 'radial-gradient(circle at 30% 30%, #fef3c7 0%, #fbbf24 40%, #f59e0b 100%)',
+                  boxShadow: '0 0 20px rgba(251, 191, 36, 0.9), inset 0 0 10px rgba(255, 255, 255, 0.5)'
+                }}
+              />
+              {/* Inner highlight */}
+              <div
+                className="absolute rounded-full bg-white/80"
+                style={{
+                  top: '35%',
+                  left: '35%',
+                  width: '15%',
+                  height: '15%'
+                }}
+              />
             </div>
 
             {/* Clones */}
@@ -1652,8 +1693,40 @@ export default function NinjaGame() {
                    style={{ boxShadow: '0 0 20px rgba(74, 222, 128, 0.8)' }} />
             )}
 
-            {/* Ground */}
-            <div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-t from-green-900 to-green-700" />
+            {/* Ground with glow */}
+            <div
+              className="absolute bottom-0 left-0 right-0 h-2"
+              style={{
+                background: 'linear-gradient(to top, #10b981, #059669)',
+                boxShadow: '0 0 20px rgba(16, 185, 129, 0.5), 0 0 40px rgba(16, 185, 129, 0.3)'
+              }}
+            />
+
+            {/* Side walls glow */}
+            <div
+              className="absolute left-0 top-0 bottom-0 w-1"
+              style={{
+                background: 'linear-gradient(to right, rgba(139, 92, 246, 0.3), transparent)',
+              }}
+            />
+            <div
+              className="absolute right-0 top-0 bottom-0 w-1"
+              style={{
+                background: 'linear-gradient(to left, rgba(139, 92, 246, 0.3), transparent)',
+              }}
+            />
+
+            {/* Grid overlay for cyberpunk feel */}
+            <div
+              className="absolute inset-0 pointer-events-none opacity-10"
+              style={{
+                backgroundImage: `
+                  linear-gradient(rgba(139, 92, 246, 0.3) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(139, 92, 246, 0.3) 1px, transparent 1px)
+                `,
+                backgroundSize: '50px 50px'
+              }}
+            />
 
             {/* Game Over */}
             {gameOver && (
@@ -1687,37 +1760,36 @@ export default function NinjaGame() {
               </div>
             )}
 
-            {/* Instructions */}
-            {!gameOver && score < 50 && (
-              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-white bg-opacity-95 px-8 py-4 rounded-2xl z-20 border-2 border-blue-500">
-                <p className="text-gray-800 font-bold text-lg">
-                  {isSinglePlayer
-                    ? '🎯 Двигай мышкой, чтобы убежать от ниндзя!'
-                    : (role === 'ninja' ? '⌨️ SPACE/E/Q для способностей!' : '🖱️ Убегай от ниндзя!')}
-                </p>
-                {isSinglePlayer && (
-                  <p className="text-gray-600 text-sm mt-1">
-                    Он умеет бегать по стенам 🧗 и использует 10 боевых приёмов!
+            {/* Instructions - top center */}
+            {!gameOver && score < 30 && (
+              <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20">
+                <div className="bg-black/70 backdrop-blur-sm px-6 py-3 rounded-full border border-purple-500/50 text-white">
+                  <p className="font-medium">
+                    {isSinglePlayer
+                      ? '🎯 Двигай мышкой чтобы убежать!'
+                      : (role === 'ninja' ? '⌨️ SPACE/E/Q для способностей!' : '🖱️ Убегай от ниндзя!')}
                   </p>
-                )}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Abilities panel (single player) */}
+          {/* Abilities panel - bottom */}
           {isSinglePlayer && (
-            <div className="mt-6">
-              <h3 className="text-white text-center font-bold mb-3 text-lg">⚔️ Арсенал Ниндзя:</h3>
-              <div className="grid grid-cols-5 gap-2 text-xs">
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+              <div className="flex gap-2">
                 {Object.entries(abilitiesFull).map(([key, ability]) => (
                   <div
                     key={key}
-                    className={`${ability.color} text-white px-3 py-2 rounded-lg text-center transition-all ${
-                      currentAbility === key ? 'ring-4 ring-white scale-110' : 'opacity-60'
+                    className={`${ability.color} text-white w-12 h-12 rounded-lg flex items-center justify-center text-xl transition-all ${
+                      currentAbility === key ? 'ring-2 ring-white scale-125 shadow-lg' : 'opacity-40'
                     }`}
+                    style={{
+                      boxShadow: currentAbility === key ? `0 0 20px ${ability.color === 'bg-blue-500' ? '#3b82f6' : '#ef4444'}` : 'none'
+                    }}
+                    title={ability.name}
                   >
-                    <div className="text-lg">{ability.emoji}</div>
-                    <div className="font-semibold mt-1">{ability.name}</div>
+                    {ability.emoji}
                   </div>
                 ))}
               </div>
@@ -1726,17 +1798,10 @@ export default function NinjaGame() {
 
           {/* Multiplayer controls hint */}
           {!isSinglePlayer && role === 'ninja' && (
-            <div className="mt-4 text-center text-gray-300 text-sm">
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50 bg-black/70 backdrop-blur-sm px-6 py-2 rounded-full text-white text-sm">
               ⌨️ SPACE - Прыжок | E - Рывок | Q - Телепорт
             </div>
           )}
-        </div>
-
-        {isSinglePlayer && (
-          <div className="mt-4 text-center text-gray-300 text-sm max-w-6xl mx-auto">
-            💡 <span className="text-green-400 font-semibold">Ниндзя бегает по стенам!</span> Прячься в углах и двигайся быстро! 🧗‍♂️
-          </div>
-        )}
       </div>
     );
   }
