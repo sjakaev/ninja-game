@@ -1,5 +1,6 @@
-@import url('https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css');
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Russo+One&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 * {
   margin: 0;
