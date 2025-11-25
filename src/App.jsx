@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.6.0";
+const APP_VERSION = "1.6.1";
 
 // Simplified Ninja Character - smoother animations
 const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurface, animTime }) => {
@@ -142,6 +142,9 @@ export default function NinjaGame() {
   const connRef = useRef(null);
   const lastTime = useRef(Date.now());
   const lastAbilityTime = useRef(0);
+  const mousePosRef = useRef({ x: 450, y: 300 });
+  const chaserRef = useRef({ x: 450, y: 550, vx: 0, vy: 0, onSurface: 'ground', rotation: 0, scale: 1 });
+  const keysPressedRef = useRef({});
 
   // Dynamic game size for fullscreen
   const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
@@ -178,8 +181,8 @@ export default function NinjaGame() {
     MAGNET: { name: 'Магнит', cooldown: 4000, duration: 2500, color: 'bg-emerald-500', emoji: '🧲' }
   };
 
-  // Ability keys mapping (1-0 on keyboard)
-  const abilityKeys = ['SUPER_JUMP', 'DASH', 'TELEPORT', 'GROW', 'CLONE', 'VORTEX', 'GHOST', 'SHOCKWAVE', 'TIME_SLOW', 'MAGNET'];
+  // Ability keys mapping (1-9 on keyboard) - no TELEPORT
+  const abilityKeys = ['SUPER_JUMP', 'DASH', 'GROW', 'CLONE', 'VORTEX', 'GHOST', 'SHOCKWAVE', 'TIME_SLOW', 'MAGNET'];
 
   const generateRoomCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -440,8 +443,13 @@ export default function NinjaGame() {
     setGameState('singleplayer');
     setScore(0);
     setGameOver(false);
-    setChaser({ x: 450, y: 550, vx: 0, vy: 0, onSurface: 'ground', rotation: 0, scale: 1 });
-    setMousePos({ x: 450, y: 300 });
+    const initialChaser = { x: 450, y: 550, vx: 0, vy: 0, onSurface: 'ground', rotation: 0, scale: 1 };
+    const initialMouse = { x: 450, y: 300 };
+    setChaser(initialChaser);
+    setMousePos(initialMouse);
+    chaserRef.current = initialChaser;
+    mousePosRef.current = initialMouse;
+    keysPressedRef.current = {};
     setClones([]);
     setShockwaves([]);
     setParticles([]);
@@ -559,28 +567,28 @@ export default function NinjaGame() {
     if (gameState !== 'singleplayer' || role !== 'ninja') return;
 
     const handleKeyDown = (e) => {
-      // Movement keys
+      // Movement keys - update ref directly for instant response
       if (['w', 'W', 'ц', 'Ц', 'ArrowUp'].includes(e.key)) {
-        setKeysPressed(k => ({ ...k, up: true }));
+        keysPressedRef.current.up = true;
       }
       if (['s', 'S', 'ы', 'Ы', 'ArrowDown'].includes(e.key)) {
-        setKeysPressed(k => ({ ...k, down: true }));
+        keysPressedRef.current.down = true;
       }
       if (['a', 'A', 'ф', 'Ф', 'ArrowLeft'].includes(e.key)) {
-        setKeysPressed(k => ({ ...k, left: true }));
+        keysPressedRef.current.left = true;
       }
       if (['d', 'D', 'в', 'В', 'ArrowRight'].includes(e.key)) {
-        setKeysPressed(k => ({ ...k, right: true }));
+        keysPressedRef.current.right = true;
       }
       if (e.key === ' ') {
-        setKeysPressed(k => ({ ...k, jump: true }));
+        keysPressedRef.current.jump = true;
         e.preventDefault();
       }
 
-      // Abilities (1-0)
+      // Abilities (1-9)
       if (!gameOver && !currentAbility) {
-        const keyNum = e.key === '0' ? 9 : parseInt(e.key) - 1;
-        if (keyNum >= 0 && keyNum <= 9) {
+        const keyNum = parseInt(e.key) - 1;
+        if (keyNum >= 0 && keyNum < abilityKeys.length) {
           const abilityName = abilityKeys[keyNum];
           const ability = abilitiesFull[abilityName];
           const cooldownEnd = abilityCooldowns[abilityName] || 0;
@@ -598,19 +606,19 @@ export default function NinjaGame() {
 
     const handleKeyUp = (e) => {
       if (['w', 'W', 'ц', 'Ц', 'ArrowUp'].includes(e.key)) {
-        setKeysPressed(k => ({ ...k, up: false }));
+        keysPressedRef.current.up = false;
       }
       if (['s', 'S', 'ы', 'Ы', 'ArrowDown'].includes(e.key)) {
-        setKeysPressed(k => ({ ...k, down: false }));
+        keysPressedRef.current.down = false;
       }
       if (['a', 'A', 'ф', 'Ф', 'ArrowLeft'].includes(e.key)) {
-        setKeysPressed(k => ({ ...k, left: false }));
+        keysPressedRef.current.left = false;
       }
       if (['d', 'D', 'в', 'В', 'ArrowRight'].includes(e.key)) {
-        setKeysPressed(k => ({ ...k, right: false }));
+        keysPressedRef.current.right = false;
       }
       if (e.key === ' ') {
-        setKeysPressed(k => ({ ...k, jump: false }));
+        keysPressedRef.current.jump = false;
       }
     };
 
@@ -629,10 +637,10 @@ export default function NinjaGame() {
     const handleKeyPress = (e) => {
       if (gameOver || currentAbility) return;
 
-      // Number keys 1-9 and 0 for abilities
-      const keyNum = e.key === '0' ? 9 : parseInt(e.key) - 1;
+      // Number keys 1-9 for abilities
+      const keyNum = parseInt(e.key) - 1;
 
-      if (keyNum >= 0 && keyNum <= 9) {
+      if (keyNum >= 0 && keyNum < abilityKeys.length) {
         const abilityName = abilityKeys[keyNum];
         const ability = abilitiesFull[abilityName];
 
@@ -662,6 +670,9 @@ export default function NinjaGame() {
   useEffect(() => {
     if (gameState !== 'singleplayer' || gameOver) return;
 
+    // Store current ability info in refs for the animation loop
+    const abilityRef = { current: currentAbility, timer: abilityTimer };
+
     const animate = () => {
       const now = Date.now();
       const deltaTime = Math.min((now - lastTime.current) / 16, 2);
@@ -673,186 +684,172 @@ export default function NinjaGame() {
 
       // Player is NINJA - keyboard controls ninja, AI controls cursor
       if (role === 'ninja') {
+        // Get current positions from refs
+        const currentChaser = chaserRef.current;
+        const currentMouse = mousePosRef.current;
+        const keys = keysPressedRef.current;
+
         // AI cursor runs away from ninja
-        setMousePos(prev => {
-          const dx = chaser.x - prev.x;
-          const dy = chaser.y - prev.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
+        const cdx = currentChaser.x - currentMouse.x;
+        const cdy = currentChaser.y - currentMouse.y;
+        const cursorDist = Math.sqrt(cdx * cdx + cdy * cdy);
 
-          if (distance < 200) {
-            // Run away from ninja
-            const escapeAngle = Math.atan2(-dy, -dx);
-            const speed = 4 * (1 - distance / 200);
-            let newX = prev.x + Math.cos(escapeAngle) * speed * dt;
-            let newY = prev.y + Math.sin(escapeAngle) * speed * dt;
+        let newMouseX = currentMouse.x;
+        let newMouseY = currentMouse.y;
 
-            // Add some randomness
-            newX += (Math.random() - 0.5) * 2;
-            newY += (Math.random() - 0.5) * 2;
+        if (cursorDist < 200) {
+          const escapeAngle = Math.atan2(-cdy, -cdx);
+          const speed = 5 * (1 - cursorDist / 200);
+          newMouseX += Math.cos(escapeAngle) * speed * dt;
+          newMouseY += Math.sin(escapeAngle) * speed * dt;
+          newMouseX += (Math.random() - 0.5) * 2;
+          newMouseY += (Math.random() - 0.5) * 2;
+        } else if (Math.random() < 0.02) {
+          newMouseX += (Math.random() - 0.5) * 50;
+          newMouseY += (Math.random() - 0.5) * 50;
+        }
 
-            // Keep in bounds
-            newX = Math.max(CURSOR_SIZE, Math.min(GAME_WIDTH - CURSOR_SIZE, newX));
-            newY = Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, newY));
-
-            return { x: newX, y: newY };
-          }
-
-          // Random movement when far
-          if (Math.random() < 0.02) {
-            return {
-              x: Math.max(CURSOR_SIZE, Math.min(GAME_WIDTH - CURSOR_SIZE, prev.x + (Math.random() - 0.5) * 50)),
-              y: Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, prev.y + (Math.random() - 0.5) * 50))
-            };
-          }
-          return prev;
-        });
+        newMouseX = Math.max(CURSOR_SIZE, Math.min(GAME_WIDTH - CURSOR_SIZE, newMouseX));
+        newMouseY = Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, newMouseY));
+        mousePosRef.current = { x: newMouseX, y: newMouseY };
+        setMousePos({ x: newMouseX, y: newMouseY });
 
         // Player controls ninja
-        setChaser(prev => {
-          let newChaser = { ...prev };
-          const dx = mousePos.x - prev.x;
-          const dy = mousePos.y - prev.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
+        let newChaser = { ...currentChaser };
+        const dx = newMouseX - currentChaser.x;
+        const dy = newMouseY - currentChaser.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
 
-          const currentSize = currentAbility === 'GROW' ? CHASER_SIZE * 1.8 : CHASER_SIZE;
+        const currentSize = abilityRef.current === 'GROW' ? CHASER_SIZE * 1.8 : CHASER_SIZE;
 
-          // Check collision - player wins!
-          if (distance < (currentSize + CURSOR_SIZE) / 2) {
-            setGameOver(true);
-            createParticles(mousePos.x, mousePos.y, '#22c55e', 40);
-            return prev;
-          }
+        // Check collision - player wins!
+        if (distance < (currentSize + CURSOR_SIZE) / 2) {
+          setGameOver(true);
+          createParticles(newMouseX, newMouseY, '#22c55e', 40);
+          return;
+        }
 
-          // Handle abilities
-          if (currentAbility && abilityTimer > 0) {
-            const angle = Math.atan2(dy, dx);
-            switch(currentAbility) {
-              case 'SUPER_JUMP':
-                if (abilityTimer === abilitiesFull.SUPER_JUMP.duration) {
-                  newChaser.vy = -18;
-                  newChaser.onSurface = null;
-                  createParticles(newChaser.x, newChaser.y, '#3b82f6', 15);
-                }
-                break;
-              case 'DASH':
-                if (abilityTimer === abilitiesFull.DASH.duration) {
-                  newChaser.vx = Math.cos(angle) * 35;
-                  newChaser.vy = Math.sin(angle) * 35;
-                  createParticles(newChaser.x, newChaser.y, '#ef4444', 20);
-                }
-                break;
-              case 'TELEPORT':
-                if (abilityTimer === abilitiesFull.TELEPORT.duration) {
-                  newChaser.x = Math.max(CHASER_SIZE, Math.min(GAME_WIDTH - CHASER_SIZE, mousePos.x));
-                  newChaser.y = Math.max(CHASER_SIZE, Math.min(GAME_HEIGHT - CHASER_SIZE, mousePos.y));
-                  newChaser.vx = 0;
-                  newChaser.vy = 0;
-                  createParticles(newChaser.x, newChaser.y, '#a855f7', 25);
-                }
-                break;
-              case 'CLONE':
-                if (abilityTimer === abilitiesFull.CLONE.duration) {
-                  const newClones = Array.from({ length: 4 }, (_, i) => {
-                    const cloneAngle = (Math.PI * 2 / 4) * i;
-                    return {
-                      id: Math.random(),
-                      x: prev.x + Math.cos(cloneAngle) * 80,
-                      y: prev.y + Math.sin(cloneAngle) * 80,
-                      vx: Math.cos(cloneAngle) * 3,
-                      vy: Math.sin(cloneAngle) * 3,
-                      life: 4000,
-                      createdAt: Date.now(),
-                      onSurface: null
-                    };
-                  });
-                  setClones(c => [...c, ...newClones]);
-                }
-                break;
-              case 'SHOCKWAVE':
-                if (abilityTimer === abilitiesFull.SHOCKWAVE.duration) {
-                  const newWaves = Array.from({ length: 3 }, (_, i) => ({
+        // Handle abilities
+        if (abilityRef.current && abilityRef.timer > 0) {
+          const angle = Math.atan2(dy, dx);
+          switch(abilityRef.current) {
+            case 'SUPER_JUMP':
+              if (abilityRef.timer === abilitiesFull.SUPER_JUMP.duration) {
+                newChaser.vy = -18;
+                newChaser.onSurface = null;
+                createParticles(newChaser.x, newChaser.y, '#3b82f6', 15);
+              }
+              break;
+            case 'DASH':
+              if (abilityRef.timer === abilitiesFull.DASH.duration) {
+                newChaser.vx = Math.cos(angle) * 35;
+                newChaser.vy = Math.sin(angle) * 35;
+                createParticles(newChaser.x, newChaser.y, '#ef4444', 20);
+              }
+              break;
+            case 'CLONE':
+              if (abilityRef.timer === abilitiesFull.CLONE.duration) {
+                const newClones = Array.from({ length: 4 }, (_, i) => {
+                  const cloneAngle = (Math.PI * 2 / 4) * i;
+                  return {
                     id: Math.random(),
-                    x: prev.x,
-                    y: prev.y,
-                    radius: 20 + i * 40,
-                    maxRadius: 250,
-                    speed: 10,
-                    createdAt: Date.now()
-                  }));
-                  setShockwaves(s => [...s, ...newWaves]);
-                }
-                break;
-              case 'TIME_SLOW':
-                if (abilityTimer === abilitiesFull.TIME_SLOW.duration) {
-                  setTimeScale(0.4);
-                }
-                break;
-            }
+                    x: currentChaser.x + Math.cos(cloneAngle) * 80,
+                    y: currentChaser.y + Math.sin(cloneAngle) * 80,
+                    vx: Math.cos(cloneAngle) * 3,
+                    vy: Math.sin(cloneAngle) * 3,
+                    life: 4000,
+                    createdAt: Date.now(),
+                    onSurface: null
+                  };
+                });
+                setClones(c => [...c, ...newClones]);
+              }
+              break;
+            case 'SHOCKWAVE':
+              if (abilityRef.timer === abilitiesFull.SHOCKWAVE.duration) {
+                const newWaves = Array.from({ length: 3 }, (_, i) => ({
+                  id: Math.random(),
+                  x: currentChaser.x,
+                  y: currentChaser.y,
+                  radius: 20 + i * 40,
+                  maxRadius: 250,
+                  speed: 10,
+                  createdAt: Date.now()
+                }));
+                setShockwaves(s => [...s, ...newWaves]);
+              }
+              break;
+            case 'TIME_SLOW':
+              if (abilityRef.timer === abilitiesFull.TIME_SLOW.duration) {
+                setTimeScale(0.4);
+              }
+              break;
           }
+        }
 
-          // Reset time scale when ability ends
-          if (!currentAbility && timeScale < 1) {
-            setTimeScale(1);
-          }
+        // Reset time scale when ability ends
+        if (!abilityRef.current && timeScale < 1) {
+          setTimeScale(1);
+        }
 
-          // Keyboard movement
-          const moveSpeed = 0.8;
-          if (keysPressed.left) newChaser.vx -= moveSpeed * dt;
-          if (keysPressed.right) newChaser.vx += moveSpeed * dt;
-          if (keysPressed.jump && prev.onSurface) {
-            newChaser.vy = -14;
+        // Keyboard movement - use ref for instant response
+        const moveSpeed = 0.8;
+        if (keys.left) newChaser.vx -= moveSpeed * dt;
+        if (keys.right) newChaser.vx += moveSpeed * dt;
+        if (keys.jump && currentChaser.onSurface) {
+          newChaser.vy = -14;
+          newChaser.onSurface = null;
+        }
+
+        // Wall climb
+        if (currentChaser.onSurface === 'left_wall' || currentChaser.onSurface === 'right_wall') {
+          if (keys.up) newChaser.vy = -6;
+          if (keys.jump) {
+            newChaser.vy = -12;
+            newChaser.vx = currentChaser.onSurface === 'left_wall' ? 10 : -10;
             newChaser.onSurface = null;
           }
+        }
 
-          // Wall climb
-          if (prev.onSurface === 'left_wall' || prev.onSurface === 'right_wall') {
-            if (keysPressed.up) newChaser.vy = -6;
-            if (keysPressed.jump) {
-              newChaser.vy = -12;
-              newChaser.vx = prev.onSurface === 'left_wall' ? 10 : -10;
-              newChaser.onSurface = null;
-            }
-          }
+        // Apply gravity
+        if (currentChaser.onSurface !== 'left_wall' && currentChaser.onSurface !== 'right_wall') {
+          newChaser.vy += GRAVITY * dt;
+        } else {
+          newChaser.vy += GRAVITY * 0.2 * dt;
+        }
 
-          // Apply gravity
-          if (prev.onSurface !== 'left_wall' && prev.onSurface !== 'right_wall') {
-            newChaser.vy += GRAVITY * dt;
-          } else {
-            newChaser.vy += GRAVITY * 0.2 * dt;
-          }
+        // Apply velocity
+        newChaser.x += newChaser.vx * dt;
+        newChaser.y += newChaser.vy * dt;
 
-          // Apply velocity
-          newChaser.x += newChaser.vx * dt;
-          newChaser.y += newChaser.vy * dt;
+        // Friction
+        newChaser.vx *= 0.92;
+        newChaser.vy *= 0.99;
 
-          // Friction
-          newChaser.vx *= 0.92;
-          newChaser.vy *= 0.99;
+        // Collisions
+        newChaser.onSurface = null;
+        if (newChaser.y >= GAME_HEIGHT - currentSize / 2) {
+          newChaser.y = GAME_HEIGHT - currentSize / 2;
+          newChaser.vy = 0;
+          newChaser.onSurface = 'ground';
+        }
+        if (newChaser.y <= currentSize / 2) {
+          newChaser.y = currentSize / 2;
+          newChaser.vy = Math.abs(newChaser.vy) * 0.3;
+        }
+        if (newChaser.x <= currentSize / 2) {
+          newChaser.x = currentSize / 2;
+          newChaser.onSurface = 'left_wall';
+          newChaser.vx = 0;
+        }
+        if (newChaser.x >= GAME_WIDTH - currentSize / 2) {
+          newChaser.x = GAME_WIDTH - currentSize / 2;
+          newChaser.onSurface = 'right_wall';
+          newChaser.vx = 0;
+        }
 
-          // Collisions
-          newChaser.onSurface = null;
-          if (newChaser.y >= GAME_HEIGHT - currentSize / 2) {
-            newChaser.y = GAME_HEIGHT - currentSize / 2;
-            newChaser.vy = 0;
-            newChaser.onSurface = 'ground';
-          }
-          if (newChaser.y <= currentSize / 2) {
-            newChaser.y = currentSize / 2;
-            newChaser.vy = Math.abs(newChaser.vy) * 0.3;
-          }
-          if (newChaser.x <= currentSize / 2) {
-            newChaser.x = currentSize / 2;
-            newChaser.onSurface = 'left_wall';
-            newChaser.vx = 0;
-          }
-          if (newChaser.x >= GAME_WIDTH - currentSize / 2) {
-            newChaser.x = GAME_WIDTH - currentSize / 2;
-            newChaser.onSurface = 'right_wall';
-            newChaser.vx = 0;
-          }
-
-          return newChaser;
-        });
+        chaserRef.current = newChaser;
+        setChaser(newChaser);
       }
 
       // Player is CURSOR - AI controls ninja (original behavior)
@@ -1092,7 +1089,7 @@ export default function NinjaGame() {
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [gameState, mousePos, currentAbility, gameOver, timeScale, selectRandomAbility, executeAbility, createParticles, createTrail]);
+  }, [gameState, role, currentAbility, abilityTimer, gameOver, timeScale, selectRandomAbility, executeAbility, createParticles, createTrail]);
 
   // Multiplayer ninja game loop
   useEffect(() => {
@@ -1393,7 +1390,7 @@ export default function NinjaGame() {
                 <p className="mb-1">Лови курсор!</p>
                 <p><span className="bg-white/20 px-1.5 py-0.5 rounded">WASD</span> Движение</p>
                 <p><span className="bg-white/20 px-1.5 py-0.5 rounded">SPACE</span> Прыжок</p>
-                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">1-0</span> Способности</p>
+                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">1-9</span> Способности</p>
               </div>
             </button>
 
@@ -1577,8 +1574,8 @@ export default function NinjaGame() {
               <div className="text-5xl mb-2">🥷</div>
               <h3 className="text-lg font-bold text-white mb-2">Ниндзя</h3>
               <div className="text-gray-200 text-xs">
-                <p className="mb-1">10 способностей!</p>
-                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">1-0</span> Ультимейты</p>
+                <p className="mb-1">9 способностей!</p>
+                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">1-9</span> Ультимейты</p>
               </div>
             </button>
 
@@ -1651,7 +1648,7 @@ export default function NinjaGame() {
                   } transition-all`}
                 >
                   <span className="text-lg">{ability.emoji}</span>
-                  <span className="text-xs opacity-70">{i === 9 ? '0' : i + 1}</span>
+                  <span className="text-xs opacity-70">{i + 1}</span>
                   {isOnCooldown && (
                     <div
                       className="absolute bottom-0 left-0 right-0 bg-red-500/50 rounded-b-lg"
