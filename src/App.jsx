@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.5.0";
 
 // Simplified Ninja Character - smoother animations
 const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurface, animTime }) => {
@@ -134,6 +134,7 @@ export default function NinjaGame() {
   const [abilityTimer, setAbilityTimer] = useState(0);
   const [timeScale, setTimeScale] = useState(1);
   const [animTime, setAnimTime] = useState(0);
+  const [abilityCooldowns, setAbilityCooldowns] = useState({});
 
   const gameAreaRef = useRef(null);
   const animationRef = useRef(null);
@@ -176,12 +177,8 @@ export default function NinjaGame() {
     MAGNET: { name: 'Магнит', cooldown: 4000, duration: 2500, color: 'bg-emerald-500', emoji: '🧲' }
   };
 
-  // Simple abilities for multiplayer
-  const abilitiesSimple = {
-    SUPER_JUMP: { name: 'Прыжок', emoji: '🚀', cooldown: 3000 },
-    DASH: { name: 'Рывок', emoji: '⚡', cooldown: 4000 },
-    TELEPORT: { name: 'Телепорт', emoji: '🌀', cooldown: 5000 }
-  };
+  // Ability keys mapping (1-0 on keyboard)
+  const abilityKeys = ['SUPER_JUMP', 'DASH', 'TELEPORT', 'GROW', 'CLONE', 'VORTEX', 'GHOST', 'SHOCKWAVE', 'TIME_SLOW', 'MAGNET'];
 
   const generateRoomCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -377,6 +374,9 @@ export default function NinjaGame() {
       case 'ninjaMove':
         if (role === 'cursor') {
           setChaser(data.chaser);
+          if (data.ability) {
+            setCurrentAbility(data.ability);
+          }
         }
         break;
       case 'gameOver':
@@ -385,13 +385,36 @@ export default function NinjaGame() {
         break;
       case 'ability':
         setCurrentAbility(data.ability);
-        setTimeout(() => setCurrentAbility(null), 2000);
+        if (abilitiesFull[data.ability]) {
+          setAbilityTimer(abilitiesFull[data.ability].duration);
+        }
+        break;
+      case 'pullCursor':
+        // Vortex/Magnet pulling the cursor
+        if (role === 'cursor') {
+          setMousePos(m => ({
+            x: Math.max(CURSOR_SIZE, Math.min(GAME_WIDTH - CURSOR_SIZE, m.x + data.pullX)),
+            y: Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, m.y + data.pullY))
+          }));
+        }
+        break;
+      case 'timeSlow':
+        setTimeScale(data.scale);
         break;
     }
   };
 
   const selectRole = (selectedRole) => {
     setRole(selectedRole);
+    setScore(0);
+    setGameOver(false);
+    setAnimTime(0);
+    setAbilityCooldowns({});
+    setCurrentAbility(null);
+    setTimeScale(1);
+    setClones([]);
+    setShockwaves([]);
+    setParticles([]);
     if (connRef.current) {
       connRef.current.send({ type: 'selectRole', role: selectedRole });
     }
@@ -529,28 +552,36 @@ export default function NinjaGame() {
     if (gameState !== 'playing' || role !== 'ninja' || gameMode !== 'multi') return;
 
     const handleKeyPress = (e) => {
-      if (gameOver) return;
+      if (gameOver || currentAbility) return;
 
-      let abilityUsed = null;
+      // Number keys 1-9 and 0 for abilities
+      const keyNum = e.key === '0' ? 9 : parseInt(e.key) - 1;
 
-      if (e.key === ' ') {
-        abilityUsed = 'SUPER_JUMP';
-      } else if (e.key === 'e' || e.key === 'E' || e.key === 'у' || e.key === 'У') {
-        abilityUsed = 'DASH';
-      } else if (e.key === 'q' || e.key === 'Q' || e.key === 'й' || e.key === 'Й') {
-        abilityUsed = 'TELEPORT';
-      }
+      if (keyNum >= 0 && keyNum <= 9) {
+        const abilityName = abilityKeys[keyNum];
+        const ability = abilitiesFull[abilityName];
 
-      if (abilityUsed && !currentAbility) {
-        setCurrentAbility(abilityUsed);
-        sendData({ type: 'ability', ability: abilityUsed });
-        setTimeout(() => setCurrentAbility(null), 2000);
+        // Check cooldown
+        const cooldownEnd = abilityCooldowns[abilityName] || 0;
+        if (Date.now() < cooldownEnd) return;
+
+        // Use ability
+        setCurrentAbility(abilityName);
+        setAbilityTimer(ability.duration);
+
+        // Set cooldown
+        setAbilityCooldowns(prev => ({
+          ...prev,
+          [abilityName]: Date.now() + ability.cooldown
+        }));
+
+        sendData({ type: 'ability', ability: abilityName });
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameState, role, gameMode, gameOver, currentAbility]);
+  }, [gameState, role, gameMode, gameOver, currentAbility, abilityCooldowns]);
 
   // Single player game loop (AI ninja)
   useEffect(() => {
@@ -808,8 +839,12 @@ export default function NinjaGame() {
 
     const animate = () => {
       const now = Date.now();
-      const dt = Math.min((now - lastTime.current) / 16, 2);
+      const deltaTime = Math.min((now - lastTime.current) / 16, 2);
       lastTime.current = now;
+      const dt = deltaTime * timeScale;
+
+      // Update animation time
+      setAnimTime(prev => prev + deltaTime * 16);
 
       setChaser(prev => {
         let newChaser = { ...prev };
@@ -818,36 +853,101 @@ export default function NinjaGame() {
         const distance = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
 
-        const currentSize = CHASER_SIZE;
+        const currentSize = currentAbility === 'GROW' ? CHASER_SIZE * 1.8 : CHASER_SIZE;
         if (distance < (currentSize + CURSOR_SIZE) / 2) {
           setGameOver(true);
+          createParticles(prev.x, prev.y, '#dc2626', 40);
           sendData({ type: 'gameOver', score: score });
           return prev;
         }
 
-        if (currentAbility) {
+        // Handle abilities
+        if (currentAbility && abilityTimer > 0) {
           switch(currentAbility) {
             case 'SUPER_JUMP':
-              newChaser.vy = -18;
-              newChaser.vx = Math.cos(angle) * 8;
-              newChaser.onSurface = null;
+              if (abilityTimer === abilitiesFull.SUPER_JUMP.duration) {
+                newChaser.vy = -18;
+                newChaser.vx = Math.cos(angle) * 8;
+                newChaser.onSurface = null;
+              }
               break;
             case 'DASH':
-              newChaser.vx = Math.cos(angle) * 35;
-              newChaser.vy = Math.sin(angle) * 35;
+              if (abilityTimer === abilitiesFull.DASH.duration) {
+                newChaser.vx = Math.cos(angle) * 35;
+                newChaser.vy = Math.sin(angle) * 35;
+              }
               break;
             case 'TELEPORT':
-              const teleportDist = 100;
-              const teleportAngle = angle + Math.PI + (Math.random() - 0.5) * 0.8;
-              newChaser.x = Math.max(CHASER_SIZE, Math.min(GAME_WIDTH - CHASER_SIZE,
-                mousePos.x + Math.cos(teleportAngle) * teleportDist));
-              newChaser.y = Math.max(CHASER_SIZE, Math.min(GAME_HEIGHT - CHASER_SIZE,
-                mousePos.y + Math.sin(teleportAngle) * teleportDist));
+              if (abilityTimer === abilitiesFull.TELEPORT.duration) {
+                const teleportDist = 100 + Math.random() * 80;
+                const teleportAngle = angle + Math.PI + (Math.random() - 0.5) * 0.8;
+                newChaser.x = Math.max(CHASER_SIZE, Math.min(GAME_WIDTH - CHASER_SIZE,
+                  mousePos.x + Math.cos(teleportAngle) * teleportDist));
+                newChaser.y = Math.max(CHASER_SIZE, Math.min(GAME_HEIGHT - CHASER_SIZE,
+                  mousePos.y + Math.sin(teleportAngle) * teleportDist));
+                createParticles(newChaser.x, newChaser.y, '#a855f7', 20);
+              }
               break;
+            case 'CLONE':
+              if (abilityTimer === abilitiesFull.CLONE.duration) {
+                const newClones = Array.from({ length: 4 }, (_, i) => {
+                  const cloneAngle = (Math.PI * 2 / 4) * i;
+                  return {
+                    id: Math.random(),
+                    x: prev.x + Math.cos(cloneAngle) * 80,
+                    y: prev.y + Math.sin(cloneAngle) * 80,
+                    vx: Math.cos(cloneAngle) * 3,
+                    vy: Math.sin(cloneAngle) * 3,
+                    life: 4000,
+                    createdAt: Date.now(),
+                    onSurface: null
+                  };
+                });
+                setClones(c => [...c, ...newClones]);
+              }
+              break;
+            case 'SHOCKWAVE':
+              if (abilityTimer === abilitiesFull.SHOCKWAVE.duration) {
+                const newWaves = Array.from({ length: 3 }, (_, i) => ({
+                  id: Math.random(),
+                  x: prev.x,
+                  y: prev.y,
+                  radius: 20 + i * 40,
+                  maxRadius: 250,
+                  speed: 10,
+                  createdAt: Date.now()
+                }));
+                setShockwaves(s => [...s, ...newWaves]);
+              }
+              break;
+            case 'VORTEX':
+            case 'MAGNET':
+              const pullForce = currentAbility === 'VORTEX' ? 3 : 2;
+              const pullX = (prev.x - mousePos.x) / Math.max(distance, 1) * pullForce * dt;
+              const pullY = (prev.y - mousePos.y) / Math.max(distance, 1) * pullForce * dt;
+              setMousePos(m => ({
+                x: Math.max(CURSOR_SIZE, Math.min(GAME_WIDTH - CURSOR_SIZE, m.x + pullX)),
+                y: Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, m.y + pullY))
+              }));
+              sendData({ type: 'pullCursor', pullX, pullY });
+              break;
+            case 'TIME_SLOW':
+              if (abilityTimer === abilitiesFull.TIME_SLOW.duration) {
+                setTimeScale(0.4);
+                sendData({ type: 'timeSlow', scale: 0.4 });
+              }
+              break;
+            // GROW and GHOST are handled by chaserSize and chaserOpacity
           }
         }
 
-        const baseSpeed = 0.4;
+        // Reset time scale when TIME_SLOW ends
+        if (!currentAbility && timeScale < 1) {
+          setTimeScale(1);
+          sendData({ type: 'timeSlow', scale: 1 });
+        }
+
+        let baseSpeed = currentAbility === 'DASH' ? 0 : 0.4;
         newChaser.vx += Math.cos(angle) * baseSpeed * dt;
         newChaser.vy += Math.sin(angle) * baseSpeed * dt;
 
@@ -878,23 +978,15 @@ export default function NinjaGame() {
           newChaser.x = currentSize / 2;
           newChaser.onSurface = 'left_wall';
           newChaser.vx = Math.abs(newChaser.vx) * 0.6;
-          if (mousePos.y < newChaser.y - 30) {
-            newChaser.vy = -4;
-          }
         }
 
         if (newChaser.x >= GAME_WIDTH - currentSize / 2) {
           newChaser.x = GAME_WIDTH - currentSize / 2;
           newChaser.onSurface = 'right_wall';
           newChaser.vx = -Math.abs(newChaser.vx) * 0.6;
-          if (mousePos.y < newChaser.y - 30) {
-            newChaser.vy = -4;
-          }
         }
 
-        newChaser.rotation = (angle * 180 / Math.PI) + 90;
-
-        sendData({ type: 'ninjaMove', chaser: newChaser });
+        sendData({ type: 'ninjaMove', chaser: newChaser, ability: currentAbility });
 
         return newChaser;
       });
@@ -906,11 +998,11 @@ export default function NinjaGame() {
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [gameState, role, gameMode, mousePos, gameOver, currentAbility, score]);
+  }, [gameState, role, gameMode, mousePos, gameOver, currentAbility, abilityTimer, score, timeScale]);
 
-  // Ability timer
+  // Ability timer (works for both single and multiplayer)
   useEffect(() => {
-    if (currentAbility && abilityTimer > 0 && gameMode === 'single') {
+    if (currentAbility && abilityTimer > 0) {
       const timer = setTimeout(() => {
         const newTimer = abilityTimer - 50;
         if (newTimer <= 0) {
@@ -1167,10 +1259,9 @@ export default function NinjaGame() {
             >
               <div className="text-5xl mb-2">🥷</div>
               <h3 className="text-lg font-bold text-white mb-2">Ниндзя</h3>
-              <div className="text-gray-200 text-xs space-y-1">
-                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">SPACE</span> Прыжок</p>
-                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">E</span> Рывок</p>
-                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">Q</span> Телепорт</p>
+              <div className="text-gray-200 text-xs">
+                <p className="mb-1">10 способностей!</p>
+                <p><span className="bg-white/20 px-1.5 py-0.5 rounded">1-0</span> Ультимейты</p>
               </div>
             </button>
 
@@ -1205,14 +1296,9 @@ export default function NinjaGame() {
           <div className="bg-black/80 border border-yellow-500 px-4 py-1.5 rounded-full text-white font-bold text-lg">
             ⭐ {score}
           </div>
-          {currentAbility && isSinglePlayer && (
+          {currentAbility && (
             <div className={`${abilitiesFull[currentAbility]?.color || 'bg-red-500'} px-3 py-1.5 rounded-full text-white font-bold text-sm`}>
               {abilitiesFull[currentAbility]?.emoji} {abilitiesFull[currentAbility]?.name}
-            </div>
-          )}
-          {currentAbility && !isSinglePlayer && (
-            <div className="bg-red-600 px-3 py-1.5 rounded-full text-white font-bold text-sm">
-              {abilitiesSimple[currentAbility]?.emoji} {abilitiesSimple[currentAbility]?.name}
             </div>
           )}
           {timeScale < 1 && (
@@ -1226,6 +1312,40 @@ export default function NinjaGame() {
             </div>
           )}
         </div>
+
+        {/* Ability bar for multiplayer ninja */}
+        {!isSinglePlayer && role === 'ninja' && (
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-1">
+            {abilityKeys.map((abilityName, i) => {
+              const ability = abilitiesFull[abilityName];
+              const cooldownEnd = abilityCooldowns[abilityName] || 0;
+              const isOnCooldown = Date.now() < cooldownEnd;
+              const cooldownPercent = isOnCooldown
+                ? ((cooldownEnd - Date.now()) / ability.cooldown) * 100
+                : 0;
+              const isActive = currentAbility === abilityName;
+
+              return (
+                <div
+                  key={abilityName}
+                  className={`relative w-12 h-12 rounded-lg flex flex-col items-center justify-center text-white text-xs ${
+                    isActive ? 'bg-yellow-500 ring-2 ring-white' :
+                    isOnCooldown ? 'bg-gray-700' : 'bg-gray-800 hover:bg-gray-700'
+                  } transition-all`}
+                >
+                  <span className="text-lg">{ability.emoji}</span>
+                  <span className="text-xs opacity-70">{i === 9 ? '0' : i + 1}</span>
+                  {isOnCooldown && (
+                    <div
+                      className="absolute bottom-0 left-0 right-0 bg-red-500/50 rounded-b-lg"
+                      style={{ height: `${cooldownPercent}%` }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Back button */}
         <button
@@ -1334,45 +1454,18 @@ export default function NinjaGame() {
             })}
 
             {/* Main Ninja */}
-            {isSinglePlayer ? (
-              <AnimatedChaser
-                x={chaser.x}
-                y={chaser.y}
-                size={chaserSize}
-                opacity={chaserOpacity}
-                ability={currentAbility}
-                isClone={false}
-                vx={chaser.vx}
-                vy={chaser.vy}
-                onSurface={chaser.onSurface}
-                animTime={animTime}
-              />
-            ) : (
-              <div
-                className="absolute pointer-events-none"
-                style={{
-                  left: chaser.x - CHASER_SIZE,
-                  top: chaser.y - CHASER_SIZE,
-                  width: CHASER_SIZE * 2,
-                  height: CHASER_SIZE * 2,
-                  transform: `rotate(${chaser.rotation}deg)`,
-                  transition: 'all 0.1s ease-out'
-                }}
-              >
-                <div
-                  className="absolute rounded-full border-4 border-red-900"
-                  style={{
-                    inset: '25%',
-                    background: 'radial-gradient(circle, #dc2626 0%, #991b1b 100%)',
-                    boxShadow: currentAbility ? '0 0 40px rgba(220, 38, 38, 0.9)' : '0 0 20px rgba(220, 38, 38, 0.6)'
-                  }}
-                >
-                  <div className="absolute inset-0 flex items-center justify-center text-4xl">
-                    🥷
-                  </div>
-                </div>
-              </div>
-            )}
+            <AnimatedChaser
+              x={chaser.x}
+              y={chaser.y}
+              size={chaserSize}
+              opacity={chaserOpacity}
+              ability={currentAbility}
+              isClone={false}
+              vx={chaser.vx}
+              vy={chaser.vy}
+              onSurface={chaser.onSurface}
+              animTime={animTime}
+            />
 
             {/* Wall indicators */}
             {chaser.onSurface === 'left_wall' && (
