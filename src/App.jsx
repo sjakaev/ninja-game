@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.17";
+const APP_VERSION = "1.7.18";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -2448,16 +2448,18 @@ export default function NinjaGame() {
             {gameOver && (
               <div
                 className="absolute inset-0 bg-black bg-opacity-85 flex items-center justify-center z-40"
-                onMouseMove={(e) => {
-                  if (gameAreaRef.current) {
-                    const rect = gameAreaRef.current.getBoundingClientRect();
-                    const newX = Math.max(0, Math.min(GAME_WIDTH, e.clientX - rect.left));
-                    const newY = Math.max(0, Math.min(GAME_HEIGHT, e.clientY - rect.top));
-                    setMousePos({ x: newX, y: newY });
-                  }
-                }}
               >
-                <div className="bg-gradient-to-br from-red-900 via-red-800 to-red-900 rounded-3xl p-10 text-center border-4 border-red-600">
+                <div
+                  className="bg-gradient-to-br from-red-900 via-red-800 to-red-900 rounded-3xl p-10 text-center border-4 border-red-600"
+                  onMouseMove={(e) => {
+                    if (gameAreaRef.current) {
+                      const rect = gameAreaRef.current.getBoundingClientRect();
+                      const newX = Math.max(0, Math.min(GAME_WIDTH, e.clientX - rect.left));
+                      const newY = Math.max(0, Math.min(GAME_HEIGHT, e.clientY - rect.top));
+                      setMousePos({ x: newX, y: newY });
+                    }
+                  }}
+                >
                   <div className="text-8xl mb-6">
                     {isSinglePlayer ? '🥷' : (role === 'ninja' ? '🎉' : '💀')}
                   </div>
@@ -2470,6 +2472,14 @@ export default function NinjaGame() {
                   <p className="text-6xl font-bold text-yellow-400 mb-6">{score} очков</p>
                   <button
                     onClick={isSinglePlayer ? startSinglePlayer : resetToMenu}
+                    onMouseMove={(e) => {
+                      if (gameAreaRef.current) {
+                        const rect = gameAreaRef.current.getBoundingClientRect();
+                        const newX = Math.max(0, Math.min(GAME_WIDTH, e.clientX - rect.left));
+                        const newY = Math.max(0, Math.min(GAME_HEIGHT, e.clientY - rect.top));
+                        setMousePos({ x: newX, y: newY });
+                      }
+                    }}
                     className="bg-gradient-to-r from-green-500 to-green-600 text-white px-12 py-4 rounded-2xl text-2xl font-bold hover:scale-110 transition-transform"
                   >
                     🔄 {isSinglePlayer ? 'Ещё раз!' : 'В меню'}
@@ -2477,6 +2487,14 @@ export default function NinjaGame() {
                   {isSinglePlayer && (
                     <button
                       onClick={resetToMenu}
+                      onMouseMove={(e) => {
+                        if (gameAreaRef.current) {
+                          const rect = gameAreaRef.current.getBoundingClientRect();
+                          const newX = Math.max(0, Math.min(GAME_WIDTH, e.clientX - rect.left));
+                          const newY = Math.max(0, Math.min(GAME_HEIGHT, e.clientY - rect.top));
+                          setMousePos({ x: newX, y: newY });
+                        }
+                      }}
                       className="block w-full mt-4 bg-slate-700 text-white px-8 py-3 rounded-xl text-lg hover:bg-slate-600 transition-colors"
                     >
                       ← Главное меню
