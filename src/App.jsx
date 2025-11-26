@@ -1,7 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.6.3";
+const APP_VERSION = "1.6.4";
+
+// Get join code from URL if present
+const getJoinCodeFromURL = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('join');
+};
+
+// Generate invite link
+const getInviteLink = (code) => {
+  const baseUrl = window.location.origin + window.location.pathname;
+  return `${baseUrl}?join=${code}`;
+};
 
 // Simplified Ninja Character - smoother animations
 const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurface, animTime }) => {
@@ -215,6 +227,62 @@ export default function NinjaGame() {
       if (newPeer) newPeer.destroy();
     };
   }, [gameMode]);
+
+  // Auto-join from URL
+  useEffect(() => {
+    const joinCode = getJoinCodeFromURL();
+    if (joinCode && gameState === 'menu') {
+      setInputRoomCode(joinCode);
+      setGameMode('multi');
+      // Clear URL params
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [gameState]);
+
+  // Auto-connect when we have peer and join code from URL
+  useEffect(() => {
+    if (peer && inputRoomCode && gameMode === 'multi' && gameState === 'menu') {
+      // Small delay to ensure peer is ready
+      const timer = setTimeout(() => {
+        if (!playerName.trim()) {
+          setPlayerName('Игрок');
+        }
+        setGameState('client');
+
+        const conn = peer.connect(inputRoomCode);
+
+        conn.on('open', () => {
+          console.log('Connected to host');
+          setIsConnected(true);
+          setConnection(conn);
+          connRef.current = conn;
+
+          conn.send({ type: 'join', playerName: playerName || 'Игрок' });
+
+          conn.on('data', (data) => {
+            handleReceivedData(data);
+          });
+
+          conn.on('close', () => {
+            setIsConnected(false);
+            alert('Соединение потеряно!');
+            resetToMenu();
+          });
+        });
+
+        conn.on('error', (err) => {
+          console.error('Connection error:', err);
+          alert('Не удалось подключиться! Комната не найдена.');
+          setGameState('menu');
+          setInputRoomCode('');
+        });
+
+        setConnection(conn);
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [peer, inputRoomCode, gameMode, gameState, playerName]);
 
   // Particles
   const createParticles = useCallback((x, y, color, count = 15) => {
@@ -1313,9 +1381,10 @@ export default function NinjaGame() {
     setTimeScale(1);
   };
 
-  const copyRoomCode = () => {
-    navigator.clipboard.writeText(roomCode);
-    alert('Код скопирован! Отправь его другу.');
+  const copyInviteLink = () => {
+    const link = getInviteLink(roomCode);
+    navigator.clipboard.writeText(link);
+    alert('Ссылка скопирована! Отправь её другу.');
   };
 
   // ============== RENDER ==============
@@ -1525,18 +1594,18 @@ export default function NinjaGame() {
           {gameState === 'host' && (
             <>
               <div className="bg-slate-700 rounded-xl p-5 mb-4">
-                <p className="text-gray-400 text-sm mb-2 text-center">Код комнаты:</p>
-                <p className="text-4xl font-bold text-center text-purple-400 tracking-widest mb-3 font-mono">
-                  {roomCode}
+                <p className="text-gray-400 text-sm mb-2 text-center">Ссылка для друга:</p>
+                <p className="text-sm text-center text-purple-400 mb-3 font-mono break-all px-2">
+                  {getInviteLink(roomCode)}
                 </p>
                 <button
-                  onClick={copyRoomCode}
+                  onClick={copyInviteLink}
                   className="w-full bg-purple-600 text-white px-4 py-2.5 rounded-lg hover:bg-purple-500 transition-colors"
                 >
-                  📋 Скопировать код
+                  📋 Скопировать ссылку
                 </button>
               </div>
-              <p className="text-gray-500 text-center text-sm">Отправь этот код другу!</p>
+              <p className="text-gray-500 text-center text-sm">Отправь эту ссылку другу!</p>
             </>
           )}
 
