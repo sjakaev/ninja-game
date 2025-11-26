@@ -1829,10 +1829,10 @@ export default function NinjaGame() {
               <div className="absolute inset-0 bg-black bg-opacity-85 flex items-center justify-center z-40">
                 <div className="bg-gradient-to-br from-red-900 via-red-800 to-red-900 rounded-3xl p-10 text-center border-4 border-red-600">
                   <div className="text-8xl mb-6">
-                    {isSinglePlayer ? '💀' : (role === 'ninja' ? '🎉' : '💀')}
+                    {isSinglePlayer ? '🥷' : (role === 'ninja' ? '🎉' : '💀')}
                   </div>
                   <h2 className="text-5xl font-bold text-white mb-4">
-                    {isSinglePlayer ? 'ПОЙМАЛИ!' : (role === 'ninja' ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ!')}
+                    {isSinglePlayer ? 'ПОБЕДА!' : (role === 'ninja' ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ!')}
                   </h2>
                   <p className="text-3xl text-red-200 mb-3">
                     {isSinglePlayer ? 'Ты продержался:' : 'Счёт:'}
@@ -1874,20 +1874,35 @@ export default function NinjaGame() {
           {isSinglePlayer && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50">
               <div className="flex gap-2">
-                {Object.entries(abilitiesFull).map(([key, ability]) => (
-                  <div
-                    key={key}
-                    className={`${ability.color} text-white w-12 h-12 rounded-lg flex items-center justify-center text-xl transition-all ${
-                      currentAbility === key ? 'ring-2 ring-white scale-125 shadow-lg' : 'opacity-40'
-                    }`}
-                    style={{
-                      boxShadow: currentAbility === key ? `0 0 20px ${ability.color === 'bg-blue-500' ? '#3b82f6' : '#ef4444'}` : 'none'
-                    }}
-                    title={ability.name}
-                  >
-                    {ability.emoji}
-                  </div>
-                ))}
+                {abilityKeys.map((key, i) => {
+                  const ability = abilitiesFull[key];
+                  const cooldownEnd = abilityCooldowns[key] || 0;
+                  const isOnCooldown = Date.now() < cooldownEnd;
+                  const cooldownPercent = isOnCooldown
+                    ? ((cooldownEnd - Date.now()) / ability.cooldown) * 100
+                    : 0;
+                  return (
+                    <div
+                      key={key}
+                      className={`relative ${ability.color} text-white w-12 h-12 rounded-lg flex flex-col items-center justify-center transition-all ${
+                        currentAbility === key ? 'ring-2 ring-white scale-125 shadow-lg' : isOnCooldown ? 'opacity-40' : 'opacity-70'
+                      }`}
+                      style={{
+                        boxShadow: currentAbility === key ? `0 0 20px ${ability.color === 'bg-blue-500' ? '#3b82f6' : '#ef4444'}` : 'none'
+                      }}
+                      title={ability.name}
+                    >
+                      <span className="text-lg">{ability.emoji}</span>
+                      <span className="text-xs opacity-80">{i + 1}</span>
+                      {isOnCooldown && (
+                        <div
+                          className="absolute bottom-0 left-0 right-0 bg-black/50 rounded-b-lg"
+                          style={{ height: `${cooldownPercent}%` }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
