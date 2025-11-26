@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.15";
+const APP_VERSION = "1.7.16";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -834,14 +834,13 @@ export default function NinjaGame() {
     if (gameMode === 'multi' && role !== 'cursor') return;
 
     const handleMouseMove = (e) => {
-      // Don't update cursor position after game over
-      if (gameAreaRef.current && !gameOverRef.current) {
+      if (gameAreaRef.current) {
         const rect = gameAreaRef.current.getBoundingClientRect();
         let newX = Math.max(0, Math.min(GAME_WIDTH, e.clientX - rect.left));
         let newY = Math.max(0, Math.min(GAME_HEIGHT, e.clientY - rect.top));
 
-        // Apply time scale for single player
-        if (gameMode === 'single' && timeScale < 1) {
+        // Apply time scale for single player (only when game is active)
+        if (gameMode === 'single' && timeScale < 1 && !gameOverRef.current) {
           const currentPos = mousePos;
           newX = currentPos.x + (newX - currentPos.x) * timeScale;
           newY = currentPos.y + (newY - currentPos.y) * timeScale;
@@ -849,12 +848,12 @@ export default function NinjaGame() {
 
         setMousePos({ x: newX, y: newY });
         mousePosRef.current = { x: newX, y: newY };
-        if (gameMode === 'multi') {
+        if (gameMode === 'multi' && !gameOverRef.current) {
           sendData({ type: 'mouseMove', x: newX, y: newY });
         }
 
-        // Draw lines when mouse is pressed
-        if (isDrawingRef.current && lastDrawPos.current) {
+        // Draw lines when mouse is pressed (only when game is active)
+        if (isDrawingRef.current && lastDrawPos.current && !gameOverRef.current) {
           const dx = newX - lastDrawPos.current.x;
           const dy = newY - lastDrawPos.current.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
