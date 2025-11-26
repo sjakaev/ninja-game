@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.21";
+const APP_VERSION = "1.7.22";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -288,6 +288,8 @@ export default function NinjaGame() {
   const roleRef = useRef(null);
   const gameOverRef = useRef(false);
   const bunnyHopRef = useRef({ streak: 0, lastLandTime: 0, speed: 0 }); // Bunny hop momentum
+  const lastSendTimeRef = useRef(0); // Throttle network sends
+  const targetPosRef = useRef(null); // Target position for interpolation
 
   // Dynamic game size for fullscreen
   const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
@@ -639,24 +641,24 @@ export default function NinjaGame() {
       case 'mouseMove':
         if (currentRole === 'ninja') {
           // Convert normalized coordinates (0-1) to local screen size
-          const localX = data.nx * GAME_WIDTH;
-          const localY = data.ny * GAME_HEIGHT;
-          mousePosRef.current = { x: localX, y: localY };
-          setMousePos({ x: localX, y: localY });
+          // Store as target for interpolation
+          targetPosRef.current = {
+            x: data.nx * GAME_WIDTH,
+            y: data.ny * GAME_HEIGHT
+          };
         }
         break;
       case 'ninjaMove':
         if (currentRole === 'cursor') {
           // Convert normalized coordinates to local screen size
-          const localChaser = {
-            ...data.chaser,
+          // Store as target for interpolation
+          targetPosRef.current = {
             x: data.chaser.nx * GAME_WIDTH,
             y: data.chaser.ny * GAME_HEIGHT,
             vx: data.chaser.nvx * GAME_WIDTH,
-            vy: data.chaser.nvy * GAME_HEIGHT
+            vy: data.chaser.nvy * GAME_HEIGHT,
+            onSurface: data.chaser.onSurface
           };
-          setChaser(localChaser);
-          chaserRef.current = localChaser;
           if (data.ability) {
             setCurrentAbility(data.ability);
             currentAbilityRef.current = data.ability;
@@ -869,8 +871,12 @@ export default function NinjaGame() {
         setMousePos({ x: newX, y: newY });
         mousePosRef.current = { x: newX, y: newY };
         if (gameMode === 'multi' && !gameOverRef.current) {
-          // Send normalized coordinates (0-1) for cross-screen compatibility
-          sendData({ type: 'mouseMove', nx: newX / GAME_WIDTH, ny: newY / GAME_HEIGHT });
+          // Throttle: send max 30 times per second
+          const now = Date.now();
+          if (now - lastSendTimeRef.current > 33) {
+            lastSendTimeRef.current = now;
+            sendData({ type: 'mouseMove', nx: newX / GAME_WIDTH, ny: newY / GAME_HEIGHT });
+          }
         }
 
         // Draw lines when mouse is pressed (only when game is active)
@@ -1831,15 +1837,20 @@ export default function NinjaGame() {
           }
         }
 
-        // Send normalized coordinates (0-1) for cross-screen compatibility
-        const normalizedChaser = {
-          ...newChaser,
-          nx: newChaser.x / GAME_WIDTH,
-          ny: newChaser.y / GAME_HEIGHT,
-          nvx: newChaser.vx / GAME_WIDTH,
-          nvy: newChaser.vy / GAME_HEIGHT
-        };
-        sendData({ type: 'ninjaMove', chaser: normalizedChaser, ability: ability });
+        // Throttle: send max 30 times per second
+        const now = Date.now();
+        if (now - lastSendTimeRef.current > 33) {
+          lastSendTimeRef.current = now;
+          // Send normalized coordinates (0-1) for cross-screen compatibility
+          const normalizedChaser = {
+            ...newChaser,
+            nx: newChaser.x / GAME_WIDTH,
+            ny: newChaser.y / GAME_HEIGHT,
+            nvx: newChaser.vx / GAME_WIDTH,
+            nvy: newChaser.vy / GAME_HEIGHT
+          };
+          sendData({ type: 'ninjaMove', chaser: normalizedChaser, ability: ability });
+        }
 
         return newChaser;
       });
@@ -1893,6 +1904,45 @@ export default function NinjaGame() {
       return () => clearInterval(timer);
     }
   }, [gameState, role, gameOver]);
+
+  // Interpolation for received network positions (smooth movement)
+  useEffect(() => {
+    if (gameState !== 'playing' || gameMode !== 'multi' || gameOver) return;
+
+    const interpolate = () => {
+      const target = targetPosRef.current;
+      if (!target) return;
+
+      const lerp = 0.3; // Interpolation speed (0-1, higher = faster)
+
+      if (role === 'ninja') {
+        // Interpolate cursor position
+        setMousePos(prev => {
+          const newX = prev.x + (target.x - prev.x) * lerp;
+          const newY = prev.y + (target.y - prev.y) * lerp;
+          mousePosRef.current = { x: newX, y: newY };
+          return { x: newX, y: newY };
+        });
+      } else if (role === 'cursor') {
+        // Interpolate ninja position
+        setChaser(prev => {
+          const newChaser = {
+            ...prev,
+            x: prev.x + (target.x - prev.x) * lerp,
+            y: prev.y + (target.y - prev.y) * lerp,
+            vx: target.vx || prev.vx,
+            vy: target.vy || prev.vy,
+            onSurface: target.onSurface
+          };
+          chaserRef.current = newChaser;
+          return newChaser;
+        });
+      }
+    };
+
+    const interval = setInterval(interpolate, 16); // 60fps interpolation
+    return () => clearInterval(interval);
+  }, [gameState, gameMode, role, gameOver]);
 
   // Sync refs with state for multiplayer game loop
   useEffect(() => {
