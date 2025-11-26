@@ -359,7 +359,7 @@ export default function NinjaGame() {
 
   // Full abilities for single player
   const abilitiesFull = {
-    SUPER_JUMP: { name: 'Супер-прыжок', cooldown: 2500, duration: 600, color: 'bg-blue-500', emoji: '🚀' },
+    SUPER_JUMP: { name: 'Супер-прыжок', cooldown: 1250, duration: 600, color: 'bg-blue-500', emoji: '🚀' },
     DASH: { name: 'Рывок', cooldown: 3000, duration: 400, color: 'bg-red-500', emoji: '⚡' },
     TELEPORT: { name: 'Телепорт', cooldown: 4500, duration: 200, color: 'bg-purple-600', emoji: '🌀' },
     GROW: { name: 'Гигант', cooldown: 5000, duration: 2500, color: 'bg-yellow-500', emoji: '💪' },
