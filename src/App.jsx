@@ -575,6 +575,7 @@ export default function NinjaGame() {
     setMousePos(initialMouse);
     chaserRef.current = initialChaser;
     mousePosRef.current = initialMouse;
+    keysPressedRef.current = {};
     lastTime.current = Date.now();
     if (connRef.current) {
       connRef.current.send({ type: 'selectRole', role: selectedRole });
@@ -836,41 +837,76 @@ export default function NinjaGame() {
     };
   }, [gameState, role, gameOver, currentAbility, abilityCooldowns]);
 
-  // Keyboard controls (multiplayer ninja)
+  // Keyboard controls (multiplayer ninja - movement + abilities)
   useEffect(() => {
     if (gameState !== 'playing' || role !== 'ninja' || gameMode !== 'multi') return;
 
-    const handleKeyPress = (e) => {
-      if (gameOver || currentAbility) return;
+    const handleKeyDown = (e) => {
+      // Movement keys - update ref directly for instant response
+      if (['w', 'W', 'ц', 'Ц', 'ArrowUp'].includes(e.key)) {
+        keysPressedRef.current.up = true;
+      }
+      if (['s', 'S', 'ы', 'Ы', 'ArrowDown'].includes(e.key)) {
+        keysPressedRef.current.down = true;
+      }
+      if (['a', 'A', 'ф', 'Ф', 'ArrowLeft'].includes(e.key)) {
+        keysPressedRef.current.left = true;
+      }
+      if (['d', 'D', 'в', 'В', 'ArrowRight'].includes(e.key)) {
+        keysPressedRef.current.right = true;
+      }
+      if (e.key === ' ') {
+        keysPressedRef.current.jump = true;
+        e.preventDefault();
+      }
 
       // Number keys 1-9 for abilities
-      const keyNum = parseInt(e.key) - 1;
-
-      if (keyNum >= 0 && keyNum < abilityKeys.length) {
-        const abilityName = abilityKeys[keyNum];
-        const ability = abilitiesFull[abilityName];
-
-        // Check cooldown
-        const cooldownEnd = abilityCooldowns[abilityName] || 0;
-        if (Date.now() < cooldownEnd) return;
-
-        // Use ability
-        setCurrentAbility(abilityName);
-        setAbilityTimer(ability.duration);
-
-        // Set cooldown
-        setAbilityCooldowns(prev => ({
-          ...prev,
-          [abilityName]: Date.now() + ability.cooldown
-        }));
-
-        sendData({ type: 'ability', ability: abilityName });
+      if (!gameOver && !currentAbilityRef.current) {
+        const keyNum = parseInt(e.key) - 1;
+        if (keyNum >= 0 && keyNum < abilityKeys.length) {
+          const abilityName = abilityKeys[keyNum];
+          const ability = abilitiesFull[abilityName];
+          const cooldownEnd = abilityCooldowns[abilityName] || 0;
+          if (Date.now() >= cooldownEnd) {
+            currentAbilityRef.current = abilityName;
+            abilityTimerRef.current = ability.duration;
+            setCurrentAbility(abilityName);
+            setAbilityTimer(ability.duration);
+            setAbilityCooldowns(prev => ({
+              ...prev,
+              [abilityName]: Date.now() + ability.cooldown
+            }));
+            sendData({ type: 'ability', ability: abilityName });
+          }
+        }
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameState, role, gameMode, gameOver, currentAbility, abilityCooldowns]);
+    const handleKeyUp = (e) => {
+      if (['w', 'W', 'ц', 'Ц', 'ArrowUp'].includes(e.key)) {
+        keysPressedRef.current.up = false;
+      }
+      if (['s', 'S', 'ы', 'Ы', 'ArrowDown'].includes(e.key)) {
+        keysPressedRef.current.down = false;
+      }
+      if (['a', 'A', 'ф', 'Ф', 'ArrowLeft'].includes(e.key)) {
+        keysPressedRef.current.left = false;
+      }
+      if (['d', 'D', 'в', 'В', 'ArrowRight'].includes(e.key)) {
+        keysPressedRef.current.right = false;
+      }
+      if (e.key === ' ') {
+        keysPressedRef.current.jump = false;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [gameState, role, gameMode, gameOver, abilityCooldowns]);
 
   // Single player game loop
   useEffect(() => {
@@ -1361,6 +1397,7 @@ export default function NinjaGame() {
       const ability = currentAbilityRef.current;
       const abilityTime = abilityTimerRef.current;
       const lines = cursorLinesRef.current;
+      const keys = keysPressedRef.current;
 
       setChaser(prev => {
         let newChaser = { ...prev };
@@ -1447,12 +1484,30 @@ export default function NinjaGame() {
           }
         }
 
-        let baseSpeed = ability === 'DASH' ? 0 : 0.4;
-        newChaser.vx += Math.cos(angle) * baseSpeed * dt;
-        newChaser.vy += Math.sin(angle) * baseSpeed * dt;
+        // Keyboard movement - use ref for instant response
+        const moveSpeed = 0.8;
+        if (keys.left) newChaser.vx -= moveSpeed * dt;
+        if (keys.right) newChaser.vx += moveSpeed * dt;
+        if (keys.jump && prev.onSurface) {
+          newChaser.vy = -14;
+          newChaser.onSurface = null;
+        }
 
+        // Wall climb
+        if (prev.onSurface === 'left_wall' || prev.onSurface === 'right_wall') {
+          if (keys.up) newChaser.vy = -6;
+          if (keys.jump) {
+            newChaser.vy = -12;
+            newChaser.vx = prev.onSurface === 'left_wall' ? 10 : -10;
+            newChaser.onSurface = null;
+          }
+        }
+
+        // Apply gravity
         if (prev.onSurface !== 'left_wall' && prev.onSurface !== 'right_wall') {
           newChaser.vy += GRAVITY * dt;
+        } else {
+          newChaser.vy += GRAVITY * 0.2 * dt;
         }
 
         newChaser.x += newChaser.vx * dt;
