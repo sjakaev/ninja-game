@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.1";
+const APP_VERSION = "1.7.3";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -150,6 +150,7 @@ export default function NinjaGame() {
   const [keysPressed, setKeysPressed] = useState({});
   const [cursorLines, setCursorLines] = useState([]); // Physical lines drawn by cursor
   const [isDrawing, setIsDrawing] = useState(false); // Is mouse button pressed
+  const [linkCopied, setLinkCopied] = useState(false); // Show "link copied" message
 
   const gameAreaRef = useRef(null);
   const animationRef = useRef(null);
@@ -165,6 +166,7 @@ export default function NinjaGame() {
   const abilityTimerRef = useRef(0);
   const scoreRef = useRef(0);
   const cursorLinesRef = useRef([]);
+  const roleRef = useRef(null);
 
   // Dynamic game size for fullscreen
   const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
@@ -478,8 +480,9 @@ export default function NinjaGame() {
     setConnection(conn);
   };
 
-  // Handle received data (multiplayer)
+  // Handle received data (multiplayer) - uses roleRef to avoid stale closures
   const handleReceivedData = (data) => {
+    const currentRole = roleRef.current;
     switch (data.type) {
       case 'welcome':
         setOpponentName(data.hostName);
@@ -488,23 +491,27 @@ export default function NinjaGame() {
         setOpponentName(data.playerName);
         break;
       case 'selectRole':
-        setRole(data.role === 'ninja' ? 'cursor' : 'ninja');
+        const newRole = data.role === 'ninja' ? 'cursor' : 'ninja';
+        roleRef.current = newRole;
+        setRole(newRole);
         setGameState('playing');
         break;
       case 'startGame':
         setGameState('playing');
         break;
       case 'mouseMove':
-        if (role === 'ninja') {
+        if (currentRole === 'ninja') {
           mousePosRef.current = { x: data.x, y: data.y };
           setMousePos({ x: data.x, y: data.y });
         }
         break;
       case 'ninjaMove':
-        if (role === 'cursor') {
+        if (currentRole === 'cursor') {
           setChaser(data.chaser);
+          chaserRef.current = data.chaser;
           if (data.ability) {
             setCurrentAbility(data.ability);
+            currentAbilityRef.current = data.ability;
           }
         }
         break;
@@ -520,11 +527,15 @@ export default function NinjaGame() {
         break;
       case 'pullCursor':
         // Vortex/Magnet pulling the cursor
-        if (role === 'cursor') {
-          setMousePos(m => ({
-            x: Math.max(CURSOR_SIZE, Math.min(GAME_WIDTH - CURSOR_SIZE, m.x + data.pullX)),
-            y: Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, m.y + data.pullY))
-          }));
+        if (currentRole === 'cursor') {
+          setMousePos(m => {
+            const newPos = {
+              x: Math.max(CURSOR_SIZE, Math.min(GAME_WIDTH - CURSOR_SIZE, m.x + data.pullX)),
+              y: Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, m.y + data.pullY))
+            };
+            mousePosRef.current = newPos;
+            return newPos;
+          });
         }
         break;
       case 'timeSlow':
@@ -532,14 +543,19 @@ export default function NinjaGame() {
         break;
       case 'cursorLine':
         // Receive line drawn by cursor player
-        if (role === 'ninja') {
-          setCursorLines(prev => [...prev.slice(-50), data.line]);
+        if (currentRole === 'ninja') {
+          setCursorLines(prev => {
+            const newLines = [...prev.slice(-50), data.line];
+            cursorLinesRef.current = newLines;
+            return newLines;
+          });
         }
         break;
     }
   };
 
   const selectRole = (selectedRole) => {
+    roleRef.current = selectedRole;
     setRole(selectedRole);
     setScore(0);
     setGameOver(false);
@@ -1581,7 +1597,8 @@ export default function NinjaGame() {
   const copyInviteLink = () => {
     const link = getInviteLink(roomCode);
     navigator.clipboard.writeText(link);
-    alert('Ссылка скопирована! Отправь её другу.');
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 3000);
   };
 
   // ============== RENDER ==============
@@ -1797,9 +1814,13 @@ export default function NinjaGame() {
                 </p>
                 <button
                   onClick={copyInviteLink}
-                  className="w-full bg-purple-600 text-white px-4 py-2.5 rounded-lg hover:bg-purple-500 transition-colors"
+                  className={`w-full px-4 py-2.5 rounded-lg transition-colors ${
+                    linkCopied
+                      ? 'bg-green-600 text-white'
+                      : 'bg-purple-600 text-white hover:bg-purple-500'
+                  }`}
                 >
-                  📋 Скопировать ссылку
+                  {linkCopied ? '✓ Ссылка скопирована!' : '📋 Скопировать ссылку'}
                 </button>
               </div>
               <p className="text-gray-500 text-center text-sm">Отправь эту ссылку другу!</p>
