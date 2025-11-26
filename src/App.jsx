@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.0";
+const APP_VERSION = "1.7.1";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -161,6 +161,10 @@ export default function NinjaGame() {
   const keysPressedRef = useRef({});
   const lastDrawPos = useRef(null); // Last position where line segment was added
   const isDrawingRef = useRef(false);
+  const currentAbilityRef = useRef(null);
+  const abilityTimerRef = useRef(0);
+  const scoreRef = useRef(0);
+  const cursorLinesRef = useRef([]);
 
   // Dynamic game size for fullscreen
   const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
@@ -1323,7 +1327,7 @@ export default function NinjaGame() {
     };
   }, [gameState, role, currentAbility, abilityTimer, gameOver, timeScale, selectRandomAbility, executeAbility, createParticles, createTrail]);
 
-  // Multiplayer ninja game loop
+  // Multiplayer ninja game loop - uses refs to avoid re-creating animation on state changes
   useEffect(() => {
     if (gameState !== 'playing' || role !== 'ninja' || gameOver || gameMode !== 'multi') return;
 
@@ -1331,13 +1335,16 @@ export default function NinjaGame() {
       const now = Date.now();
       const deltaTime = Math.min((now - lastTime.current) / 16, 2);
       lastTime.current = now;
-      const dt = deltaTime * timeScale;
+      const dt = deltaTime;
 
       // Update animation time
       setAnimTime(prev => prev + deltaTime * 16);
 
-      // Use ref for mouse position to avoid stale closures
+      // Use refs for all values to avoid stale closures
       const currentMouse = mousePosRef.current;
+      const ability = currentAbilityRef.current;
+      const abilityTime = abilityTimerRef.current;
+      const lines = cursorLinesRef.current;
 
       setChaser(prev => {
         let newChaser = { ...prev };
@@ -1346,43 +1353,32 @@ export default function NinjaGame() {
         const distance = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
 
-        const currentSize = currentAbility === 'GROW' ? CHASER_SIZE * 1.8 : CHASER_SIZE;
+        const currentSize = ability === 'GROW' ? CHASER_SIZE * 1.8 : CHASER_SIZE;
         if (distance < (currentSize + CURSOR_SIZE) / 2) {
           setGameOver(true);
           createParticles(prev.x, prev.y, '#dc2626', 40);
-          sendData({ type: 'gameOver', score: score });
+          sendData({ type: 'gameOver', score: scoreRef.current });
           return prev;
         }
 
         // Handle abilities
-        if (currentAbility && abilityTimer > 0) {
-          switch(currentAbility) {
+        if (ability && abilityTime > 0) {
+          switch(ability) {
             case 'SUPER_JUMP':
-              if (abilityTimer === abilitiesFull.SUPER_JUMP.duration) {
+              if (abilityTime === abilitiesFull.SUPER_JUMP.duration) {
                 newChaser.vy = -18;
                 newChaser.vx = Math.cos(angle) * 8;
                 newChaser.onSurface = null;
               }
               break;
             case 'DASH':
-              if (abilityTimer === abilitiesFull.DASH.duration) {
+              if (abilityTime === abilitiesFull.DASH.duration) {
                 newChaser.vx = Math.cos(angle) * 35;
                 newChaser.vy = Math.sin(angle) * 35;
               }
               break;
-            case 'TELEPORT':
-              if (abilityTimer === abilitiesFull.TELEPORT.duration) {
-                const teleportDist = 100 + Math.random() * 80;
-                const teleportAngle = angle + Math.PI + (Math.random() - 0.5) * 0.8;
-                newChaser.x = Math.max(CHASER_SIZE, Math.min(GAME_WIDTH - CHASER_SIZE,
-                  mousePos.x + Math.cos(teleportAngle) * teleportDist));
-                newChaser.y = Math.max(CHASER_SIZE, Math.min(GAME_HEIGHT - CHASER_SIZE,
-                  mousePos.y + Math.sin(teleportAngle) * teleportDist));
-                createParticles(newChaser.x, newChaser.y, '#a855f7', 20);
-              }
-              break;
             case 'CLONE':
-              if (abilityTimer === abilitiesFull.CLONE.duration) {
+              if (abilityTime === abilitiesFull.CLONE.duration) {
                 const newClones = Array.from({ length: 4 }, (_, i) => {
                   const cloneAngle = (Math.PI * 2 / 4) * i;
                   return {
@@ -1400,7 +1396,7 @@ export default function NinjaGame() {
               }
               break;
             case 'SHOCKWAVE':
-              if (abilityTimer === abilitiesFull.SHOCKWAVE.duration) {
+              if (abilityTime === abilitiesFull.SHOCKWAVE.duration) {
                 const newWaves = Array.from({ length: 3 }, (_, i) => ({
                   id: Math.random(),
                   x: prev.x,
@@ -1415,7 +1411,7 @@ export default function NinjaGame() {
               break;
             case 'VORTEX':
             case 'MAGNET':
-              const pullForce = currentAbility === 'VORTEX' ? 3 : 2;
+              const pullForce = ability === 'VORTEX' ? 3 : 2;
               const pullX = (prev.x - currentMouse.x) / Math.max(distance, 1) * pullForce * dt;
               const pullY = (prev.y - currentMouse.y) / Math.max(distance, 1) * pullForce * dt;
               mousePosRef.current = {
@@ -1426,7 +1422,7 @@ export default function NinjaGame() {
               sendData({ type: 'pullCursor', pullX, pullY });
               break;
             case 'TIME_SLOW':
-              if (abilityTimer === abilitiesFull.TIME_SLOW.duration) {
+              if (abilityTime === abilitiesFull.TIME_SLOW.duration) {
                 setTimeScale(0.4);
                 sendData({ type: 'timeSlow', scale: 0.4 });
               }
@@ -1435,13 +1431,7 @@ export default function NinjaGame() {
           }
         }
 
-        // Reset time scale when TIME_SLOW ends
-        if (!currentAbility && timeScale < 1) {
-          setTimeScale(1);
-          sendData({ type: 'timeSlow', scale: 1 });
-        }
-
-        let baseSpeed = currentAbility === 'DASH' ? 0 : 0.4;
+        let baseSpeed = ability === 'DASH' ? 0 : 0.4;
         newChaser.vx += Math.cos(angle) * baseSpeed * dt;
         newChaser.vy += Math.sin(angle) * baseSpeed * dt;
 
@@ -1481,7 +1471,7 @@ export default function NinjaGame() {
         }
 
         // Collision with cursor lines (multiplayer)
-        for (const line of cursorLines) {
+        for (const line of lines) {
           const collision = checkLineCollision(newChaser.x, newChaser.y, currentSize / 2, line);
           if (collision) {
             // Push ninja out of line
@@ -1503,7 +1493,7 @@ export default function NinjaGame() {
           }
         }
 
-        sendData({ type: 'ninjaMove', chaser: newChaser, ability: currentAbility });
+        sendData({ type: 'ninjaMove', chaser: newChaser, ability: ability });
 
         return newChaser;
       });
@@ -1515,7 +1505,7 @@ export default function NinjaGame() {
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [gameState, role, gameMode, gameOver, currentAbility, abilityTimer, score, timeScale]);
+  }, [gameState, role, gameMode, gameOver]); // Minimal dependencies - use refs for everything else
 
   // Clean up old cursor lines (5 second lifetime)
   useEffect(() => {
@@ -1548,10 +1538,28 @@ export default function NinjaGame() {
   // Score counter
   useEffect(() => {
     if ((gameState === 'singleplayer' || (gameState === 'playing' && role === 'ninja')) && !gameOver) {
-      const timer = setInterval(() => setScore(s => s + 1), 100);
+      const timer = setInterval(() => {
+        setScore(s => {
+          scoreRef.current = s + 1;
+          return s + 1;
+        });
+      }, 100);
       return () => clearInterval(timer);
     }
   }, [gameState, role, gameOver]);
+
+  // Sync refs with state for multiplayer game loop
+  useEffect(() => {
+    currentAbilityRef.current = currentAbility;
+  }, [currentAbility]);
+
+  useEffect(() => {
+    abilityTimerRef.current = abilityTimer;
+  }, [abilityTimer]);
+
+  useEffect(() => {
+    cursorLinesRef.current = cursorLines;
+  }, [cursorLines]);
 
   const resetToMenu = () => {
     setGameState('menu');
