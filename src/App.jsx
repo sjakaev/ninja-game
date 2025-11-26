@@ -2257,17 +2257,19 @@ export default function NinjaGame() {
               })}
             </svg>
 
-            {/* Cursor */}
-            <div
-              className="absolute pointer-events-none z-30 rounded-full bg-yellow-400"
-              style={{
-                left: mousePos.x - CURSOR_SIZE / 2,
-                top: mousePos.y - CURSOR_SIZE / 2,
-                width: CURSOR_SIZE,
-                height: CURSOR_SIZE,
-                boxShadow: '0 0 15px rgba(251, 191, 36, 0.8)'
-              }}
-            />
+            {/* Cursor - hide when game over */}
+            {!gameOver && (
+              <div
+                className="absolute pointer-events-none z-30 rounded-full bg-yellow-400"
+                style={{
+                  left: mousePos.x - CURSOR_SIZE / 2,
+                  top: mousePos.y - CURSOR_SIZE / 2,
+                  width: CURSOR_SIZE,
+                  height: CURSOR_SIZE,
+                  boxShadow: '0 0 15px rgba(251, 191, 36, 0.8)'
+                }}
+              />
+            )}
 
             {/* Clones */}
             {clones.map(clone => {
