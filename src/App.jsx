@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.28";
+const APP_VERSION = "1.7.29";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -2363,40 +2363,6 @@ export default function NinjaGame() {
             </div>
           )}
         </div>
-
-        {/* Ability bar for ninja (multiplayer only) */}
-        {role === 'ninja' && !isSinglePlayer && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-1">
-            {abilityKeys.map((abilityName, i) => {
-              const ability = abilitiesFull[abilityName];
-              const cooldownEnd = abilityCooldowns[abilityName] || 0;
-              const isOnCooldown = Date.now() < cooldownEnd;
-              const cooldownPercent = isOnCooldown
-                ? ((cooldownEnd - Date.now()) / ability.cooldown) * 100
-                : 0;
-              const isActive = currentAbility === abilityName;
-
-              return (
-                <div
-                  key={abilityName}
-                  className={`relative w-12 h-12 rounded-lg flex flex-col items-center justify-center text-white text-xs ${
-                    isActive ? 'bg-yellow-500 ring-2 ring-white' :
-                    isOnCooldown ? 'bg-gray-700' : 'bg-gray-800 hover:bg-gray-700'
-                  } transition-all`}
-                >
-                  <span className="text-lg">{ability.emoji}</span>
-                  <span className="text-xs opacity-70">{i + 1}</span>
-                  {isOnCooldown && (
-                    <div
-                      className="absolute bottom-0 left-0 right-0 bg-red-500/50 rounded-b-lg"
-                      style={{ height: `${cooldownPercent}%` }}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         {/* Back button */}
         <button
