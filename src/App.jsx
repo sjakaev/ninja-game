@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.14";
+const APP_VERSION = "1.7.15";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -287,7 +287,7 @@ export default function NinjaGame() {
   const cursorLinesRef = useRef([]);
   const roleRef = useRef(null);
   const gameOverRef = useRef(false);
-  const bunnyHopRef = useRef({ streak: 0, lastLandTime: 0, direction: 0 }); // Bunny hop momentum
+  const bunnyHopRef = useRef({ streak: 0, lastLandTime: 0, speed: 0 }); // Bunny hop momentum
 
   // Dynamic game size for fullscreen
   const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
@@ -1191,26 +1191,30 @@ export default function NinjaGame() {
 
           // If jumped quickly after landing (within 400ms), increase streak
           if (timeSinceLand < 400 && bunnyHopRef.current.lastLandTime > 0) {
-            bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 5);
+            bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 10);
+            // Accumulate speed - don't reset, just add more!
+            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 4, 50);
           } else {
-            // Too slow - reset streak
+            // Too slow - reset
             bunnyHopRef.current.streak = 0;
+            bunnyHopRef.current.speed = 0;
           }
           setBunnyHopCombo(bunnyHopRef.current.streak);
 
           // Base jump + bonus from streak
-          const jumpBonus = bunnyHopRef.current.streak * 3;
+          const jumpBonus = bunnyHopRef.current.streak * 2;
           newChaser.vy = -14 - jumpBonus;
 
-          // Horizontal speed bonus - add to current direction
-          const hBonus = bunnyHopRef.current.streak * 5;
-          if (keys.right) newChaser.vx += hBonus;
-          else if (keys.left) newChaser.vx -= hBonus;
+          // Apply accumulated speed in movement direction
+          const speed = bunnyHopRef.current.speed;
+          if (keys.right) newChaser.vx = Math.max(newChaser.vx, speed);
+          else if (keys.left) newChaser.vx = Math.min(newChaser.vx, -speed);
 
           newChaser.onSurface = null;
         } else if ((keys.jump || keys.up) && currentChaser.onSurface) {
           // Wall/other surface jump - reset streak
           bunnyHopRef.current.streak = 0;
+          bunnyHopRef.current.speed = 0;
           setBunnyHopCombo(0);
           newChaser.vy = -14;
           newChaser.onSurface = null;
@@ -1680,26 +1684,30 @@ export default function NinjaGame() {
 
           // If jumped quickly after landing (within 400ms), increase streak
           if (timeSinceLand < 400 && bunnyHopRef.current.lastLandTime > 0) {
-            bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 5);
+            bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 10);
+            // Accumulate speed - don't reset, just add more!
+            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 4, 50);
           } else {
-            // Too slow - reset streak
+            // Too slow - reset
             bunnyHopRef.current.streak = 0;
+            bunnyHopRef.current.speed = 0;
           }
           setBunnyHopCombo(bunnyHopRef.current.streak);
 
           // Base jump + bonus from streak
-          const jumpBonus = bunnyHopRef.current.streak * 3;
+          const jumpBonus = bunnyHopRef.current.streak * 2;
           newChaser.vy = -14 - jumpBonus;
 
-          // Horizontal speed bonus - add to current direction
-          const hBonus = bunnyHopRef.current.streak * 5;
-          if (keys.right) newChaser.vx += hBonus;
-          else if (keys.left) newChaser.vx -= hBonus;
+          // Apply accumulated speed in movement direction
+          const speed = bunnyHopRef.current.speed;
+          if (keys.right) newChaser.vx = Math.max(newChaser.vx, speed);
+          else if (keys.left) newChaser.vx = Math.min(newChaser.vx, -speed);
 
           newChaser.onSurface = null;
         } else if ((keys.jump || keys.up) && prev.onSurface) {
           // Non-ground surfaces (walls, lines) - normal jump, reset streak
           bunnyHopRef.current.streak = 0;
+          bunnyHopRef.current.speed = 0;
           setBunnyHopCombo(0);
           newChaser.vy = -14;
           newChaser.onSurface = null;
@@ -2342,19 +2350,17 @@ export default function NinjaGame() {
               })}
             </svg>
 
-            {/* Cursor - hide when game over */}
-            {!gameOver && (
-              <div
-                className="absolute pointer-events-none z-30 rounded-full bg-yellow-400"
-                style={{
-                  left: mousePos.x - CURSOR_SIZE / 2,
-                  top: mousePos.y - CURSOR_SIZE / 2,
-                  width: CURSOR_SIZE,
-                  height: CURSOR_SIZE,
-                  boxShadow: '0 0 15px rgba(251, 191, 36, 0.8)'
-                }}
-              />
-            )}
+            {/* Cursor - always visible, on top of everything */}
+            <div
+              className="absolute pointer-events-none z-50 rounded-full bg-yellow-400"
+              style={{
+                left: mousePos.x - CURSOR_SIZE / 2,
+                top: mousePos.y - CURSOR_SIZE / 2,
+                width: CURSOR_SIZE,
+                height: CURSOR_SIZE,
+                boxShadow: '0 0 15px rgba(251, 191, 36, 0.8)'
+              }}
+            />
 
             {/* Clones */}
             {clones.map(clone => {
