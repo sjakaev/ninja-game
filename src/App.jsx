@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.8";
+const APP_VERSION = "1.7.9";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -89,12 +89,62 @@ const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurfa
           <circle cx={40 + eyeOffsetX} cy={46 + eyeOffsetY * 0.5} r="1.5" fill="white" />
           <circle cx={56 + eyeOffsetX} cy={46 + eyeOffsetY * 0.5} r="1.5" fill="white" />
 
-          {/* Sweat drop */}
-          <path d="M 72 42 Q 74 38 72 35" fill="#60a5fa" />
-          <circle cx="72" cy="43" r="2" fill="#60a5fa" />
-
           {/* Mouth */}
           <path d="M 45 61 Q 50 59 55 61" stroke="black" strokeWidth="2" fill="none" />
+        </svg>
+      </div>
+    );
+  }
+
+  // Wall slide animation
+  const isOnWall = onSurface === 'left_wall' || onSurface === 'right_wall';
+  const wallSide = onSurface === 'left_wall' ? 1 : -1; // 1 = facing right (on left wall), -1 = facing left
+
+  if (isOnWall) {
+    return (
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          left: x,
+          top: y,
+          transform: `translate(-50%, -50%) scaleX(${wallSide})`,
+          opacity,
+          width: size * 2,
+          height: size * 2,
+        }}
+      >
+        <svg viewBox="0 0 100 100" width={size * 2} height={size * 2}>
+          {/* Body pressed against wall */}
+          <rect x="38" y="35" width="24" height="30" rx="6" fill={bodyColor} />
+          <rect x="38" y="50" width="24" height="4" fill="#1f2937" />
+
+          {/* Legs bent - ready to push off */}
+          <rect x="40" y="62" width="8" height="18" rx="4" fill={bodyColor} transform="rotate(-20, 44, 62)" />
+          <rect x="52" y="62" width="8" height="18" rx="4" fill={bodyColor} transform="rotate(10, 56, 62)" />
+          <ellipse cx="38" cy="78" rx="6" ry="4" fill="#1f2937" />
+          <ellipse cx="58" cy="80" rx="6" ry="4" fill="#1f2937" />
+
+          {/* Arms grabbing wall */}
+          <rect x="28" y="38" width="8" height="14" rx="4" fill={bodyColor} transform="rotate(-30, 32, 38)" />
+          <circle cx="26" cy="36" r="5" fill={headColor} />
+          <rect x="28" y="52" width="8" height="14" rx="4" fill={bodyColor} transform="rotate(-20, 32, 52)" />
+          <circle cx="26" cy="64" r="5" fill={headColor} />
+
+          {/* Head looking outward */}
+          <circle cx="50" cy="24" r="14" fill={headColor} stroke="#92400e" strokeWidth="2" />
+
+          {/* Headband */}
+          <rect x="36" y="20" width="28" height="6" fill={bodyColor} />
+          <rect x="64" y="19" width="12" height="4" rx="2" fill={bodyColor} transform="rotate(15, 64, 21)" />
+
+          {/* Eyes looking out */}
+          <circle cx="52" cy="22" r="4" fill="white" />
+          <circle cx="62" cy="22" r="4" fill="white" />
+          <circle cx="54" cy="23" r="2" fill="black" />
+          <circle cx="64" cy="23" r="2" fill="black" />
+
+          {/* Mouth */}
+          <path d="M 52 30 Q 57 28 62 30" stroke="black" strokeWidth="2" fill="none" />
         </svg>
       </div>
     );
