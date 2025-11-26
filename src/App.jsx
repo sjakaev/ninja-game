@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.13";
+const APP_VERSION = "1.7.14";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -1184,34 +1184,32 @@ export default function NinjaGame() {
         if (keys.left) newChaser.vx -= moveSpeed * dt;
         if (keys.right) newChaser.vx += moveSpeed * dt;
 
-        // Bunny hop logic - consecutive jumps without running build momentum
+        // Bunny hop logic - consecutive quick jumps build momentum
         if ((keys.jump || keys.up) && currentChaser.onSurface === 'ground') {
           const now = Date.now();
           const timeSinceLand = now - bunnyHopRef.current.lastLandTime;
 
-          // If jumped quickly after landing (within 500ms), increase streak
-          // Running resets streak
-          if (isRunning) {
-            bunnyHopRef.current.streak = 0; // Reset if running
-            setBunnyHopCombo(0);
-          } else if (timeSinceLand < 500 && bunnyHopRef.current.lastLandTime > 0) {
+          // If jumped quickly after landing (within 400ms), increase streak
+          if (timeSinceLand < 400 && bunnyHopRef.current.lastLandTime > 0) {
             bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 5);
-            setBunnyHopCombo(bunnyHopRef.current.streak);
+          } else {
+            // Too slow - reset streak
+            bunnyHopRef.current.streak = 0;
           }
-          // First jump doesn't add streak but doesn't reset either
+          setBunnyHopCombo(bunnyHopRef.current.streak);
 
-          // Base jump + bonus from streak (each streak adds 4 to jump power) - STRONG
-          const jumpBonus = bunnyHopRef.current.streak * 4;
+          // Base jump + bonus from streak
+          const jumpBonus = bunnyHopRef.current.streak * 3;
           newChaser.vy = -14 - jumpBonus;
 
-          // Also add horizontal momentum from streak (keeps direction) - VERY STRONG
-          const hBonus = bunnyHopRef.current.streak * 8;
-          if (bunnyHopRef.current.direction > 0) newChaser.vx += hBonus;
-          else if (bunnyHopRef.current.direction < 0) newChaser.vx -= hBonus;
+          // Horizontal speed bonus - add to current direction
+          const hBonus = bunnyHopRef.current.streak * 5;
+          if (keys.right) newChaser.vx += hBonus;
+          else if (keys.left) newChaser.vx -= hBonus;
 
           newChaser.onSurface = null;
         } else if ((keys.jump || keys.up) && currentChaser.onSurface) {
-          // Wall/other surface jump - no bunny hop
+          // Wall/other surface jump - reset streak
           bunnyHopRef.current.streak = 0;
           setBunnyHopCombo(0);
           newChaser.vy = -14;
@@ -1675,33 +1673,34 @@ export default function NinjaGame() {
         if (keys.left) newChaser.vx -= moveSpeed * dt;
         if (keys.right) newChaser.vx += moveSpeed * dt;
 
-        // Bunny hop logic - consecutive jumps without running build momentum
+        // Bunny hop logic - consecutive quick jumps build momentum
         if ((keys.jump || keys.up) && prev.onSurface === 'ground') {
           const now = Date.now();
           const timeSinceLand = now - bunnyHopRef.current.lastLandTime;
 
-          // If jumped quickly after landing (within 500ms), increase streak
-          // Running resets streak
-          if (isRunning) {
-            bunnyHopRef.current.streak = 0; // Reset if running
-          } else if (timeSinceLand < 500 && bunnyHopRef.current.lastLandTime > 0) {
+          // If jumped quickly after landing (within 400ms), increase streak
+          if (timeSinceLand < 400 && bunnyHopRef.current.lastLandTime > 0) {
             bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 5);
+          } else {
+            // Too slow - reset streak
+            bunnyHopRef.current.streak = 0;
           }
-          // First jump doesn't add streak but doesn't reset either
+          setBunnyHopCombo(bunnyHopRef.current.streak);
 
-          // Base jump + bonus from streak (each streak adds 4 to jump power) - STRONG
-          const jumpBonus = bunnyHopRef.current.streak * 4;
+          // Base jump + bonus from streak
+          const jumpBonus = bunnyHopRef.current.streak * 3;
           newChaser.vy = -14 - jumpBonus;
 
-          // Also add horizontal momentum from streak (keeps direction) - VERY STRONG
-          const hBonus = bunnyHopRef.current.streak * 8;
-          if (bunnyHopRef.current.direction > 0) newChaser.vx += hBonus;
-          else if (bunnyHopRef.current.direction < 0) newChaser.vx -= hBonus;
+          // Horizontal speed bonus - add to current direction
+          const hBonus = bunnyHopRef.current.streak * 5;
+          if (keys.right) newChaser.vx += hBonus;
+          else if (keys.left) newChaser.vx -= hBonus;
 
           newChaser.onSurface = null;
         } else if ((keys.jump || keys.up) && prev.onSurface) {
           // Non-ground surfaces (walls, lines) - normal jump, reset streak
           bunnyHopRef.current.streak = 0;
+          setBunnyHopCombo(0);
           newChaser.vy = -14;
           newChaser.onSurface = null;
         }
