@@ -1197,12 +1197,12 @@ export default function NinjaGame() {
           }
           // First jump doesn't add streak but doesn't reset either
 
-          // Base jump + bonus from streak (each streak adds 2 to jump power)
-          const jumpBonus = bunnyHopRef.current.streak * 2;
+          // Base jump + bonus from streak (each streak adds 4 to jump power) - STRONG
+          const jumpBonus = bunnyHopRef.current.streak * 4;
           newChaser.vy = -14 - jumpBonus;
 
-          // Also add horizontal momentum from streak (keeps direction)
-          const hBonus = bunnyHopRef.current.streak * 3;
+          // Also add horizontal momentum from streak (keeps direction) - VERY STRONG
+          const hBonus = bunnyHopRef.current.streak * 8;
           if (bunnyHopRef.current.direction > 0) newChaser.vx += hBonus;
           else if (bunnyHopRef.current.direction < 0) newChaser.vx -= hBonus;
 
@@ -1684,12 +1684,12 @@ export default function NinjaGame() {
           }
           // First jump doesn't add streak but doesn't reset either
 
-          // Base jump + bonus from streak (each streak adds 2 to jump power)
-          const jumpBonus = bunnyHopRef.current.streak * 2;
+          // Base jump + bonus from streak (each streak adds 4 to jump power) - STRONG
+          const jumpBonus = bunnyHopRef.current.streak * 4;
           newChaser.vy = -14 - jumpBonus;
 
-          // Also add horizontal momentum from streak (keeps direction)
-          const hBonus = bunnyHopRef.current.streak * 3;
+          // Also add horizontal momentum from streak (keeps direction) - VERY STRONG
+          const hBonus = bunnyHopRef.current.streak * 8;
           if (bunnyHopRef.current.direction > 0) newChaser.vx += hBonus;
           else if (bunnyHopRef.current.direction < 0) newChaser.vx -= hBonus;
 
