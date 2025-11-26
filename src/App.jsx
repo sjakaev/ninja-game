@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.25";
+const APP_VERSION = "1.7.26";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -242,6 +242,7 @@ export default function NinjaGame() {
   const [inputRoomCode, setInputRoomCode] = useState('');
   const [peer, setPeer] = useState(null);
   const [isPeerReady, setIsPeerReady] = useState(false);
+  const [pendingAutoJoin, setPendingAutoJoin] = useState(false); // Flag for URL auto-join
   const [connection, setConnection] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [opponentName, setOpponentName] = useState('');
@@ -412,74 +413,26 @@ export default function NinjaGame() {
     };
   }, [gameMode]);
 
-  // Auto-join from URL
+  // Auto-fill room code from URL and set flag for auto-join
   useEffect(() => {
     const joinCode = getJoinCodeFromURL();
     if (joinCode && gameState === 'menu') {
       setInputRoomCode(joinCode);
       setGameMode('multi');
+      setPlayerName('Игрок'); // Set default name for URL joins
+      setPendingAutoJoin(true); // Will auto-join when peer is ready
       // Clear URL params
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [gameState]);
 
-  // Auto-connect when we have peer ready and join code from URL
+  // Auto-connect when peer is ready and we have pending auto-join
   useEffect(() => {
-    if (isPeerReady && peer && inputRoomCode && gameMode === 'multi' && gameState === 'menu') {
-      if (!playerName.trim()) {
-        setPlayerName('Игрок');
-      }
-      setGameState('client');
-
-      console.log('Connecting to host:', inputRoomCode);
-      const conn = peer.connect(inputRoomCode);
-      let connected = false;
-
-      // Timeout for connection - 10 seconds
-      const timeout = setTimeout(() => {
-        if (!connected) {
-          console.error('Connection timeout');
-          alert('Не удалось подключиться! Время ожидания истекло. Возможно, хост закрыл комнату.');
-          conn.close();
-          setGameState('menu');
-          setInputRoomCode('');
-        }
-      }, 10000);
-
-      conn.on('open', () => {
-        connected = true;
-        clearTimeout(timeout);
-        console.log('Connected to host');
-        setIsConnected(true);
-        setConnection(conn);
-        connRef.current = conn;
-
-        conn.send({ type: 'join', playerName: playerName || 'Игрок' });
-
-        conn.on('data', (data) => {
-          handleReceivedData(data);
-        });
-
-        conn.on('close', () => {
-          setIsConnected(false);
-          alert('Соединение потеряно!');
-          resetToMenu();
-        });
-      });
-
-      conn.on('error', (err) => {
-        clearTimeout(timeout);
-        console.error('Connection error:', err);
-        alert('Не удалось подключиться! Комната не найдена.');
-        setGameState('menu');
-        setInputRoomCode('');
-      });
-
-      setConnection(conn);
-
-      return () => clearTimeout(timeout);
+    if (pendingAutoJoin && isPeerReady && peer && inputRoomCode) {
+      setPendingAutoJoin(false); // Clear flag
+      joinGame(); // Use the same join function
     }
-  }, [isPeerReady, peer, inputRoomCode, gameMode, gameState, playerName]);
+  }, [pendingAutoJoin, isPeerReady, peer, inputRoomCode]);
 
   // Particles
   const createParticles = useCallback((x, y, color, count = 15) => {
@@ -898,7 +851,8 @@ export default function NinjaGame() {
   // Mouse movement and drawing
   useEffect(() => {
     if (gameState !== 'singleplayer' && gameState !== 'playing') return;
-    if (gameMode === 'multi' && role !== 'cursor') return;
+    // Block mouse control for ninja role (both single and multiplayer)
+    if (role === 'ninja') return;
 
     const handleMouseMove = (e) => {
       if (gameAreaRef.current) {
