@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.32";
+const APP_VERSION = "1.8.0";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -16,7 +16,7 @@ const getInviteLink = (code) => {
 };
 
 // Simplified Ninja Character - smoother animations
-const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurface, animTime, isCrouching, cursorX, cursorY }) => {
+const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurface, animTime, isCrouching, cursorX, cursorY, selectedHat }) => {
   // Use animTime for smooth animation (passed from game loop)
   const speed = Math.sqrt((vx || 0) ** 2 + (vy || 0) ** 2);
   const isMoving = speed > 0.5;
@@ -89,6 +89,19 @@ const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurfa
 
           {/* Mouth */}
           <path d="M 45 61 Q 50 59 55 61" stroke="black" strokeWidth="2" fill="none" />
+
+          {/* Hat */}
+          {selectedHat === 'tophat' && (
+            <text
+              x="50"
+              y="44"
+              fontSize="18"
+              textAnchor="middle"
+              style={{ userSelect: 'none' }}
+            >
+              🎩
+            </text>
+          )}
         </svg>
       </div>
     );
@@ -143,6 +156,19 @@ const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurfa
 
           {/* Mouth */}
           <path d="M 52 30 Q 57 28 62 30" stroke="black" strokeWidth="2" fill="none" />
+
+          {/* Hat */}
+          {selectedHat === 'tophat' && (
+            <text
+              x="50"
+              y="14"
+              fontSize="16"
+              textAnchor="middle"
+              style={{ userSelect: 'none' }}
+            >
+              🎩
+            </text>
+          )}
         </svg>
       </div>
     );
@@ -221,6 +247,19 @@ const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurfa
         <path d={`M 45 ${34 - bodyBob} Q 50 ${ability ? 38 : 32 - bodyBob} 55 ${34 - bodyBob}`}
           stroke="black" strokeWidth="2" fill="none" />
 
+        {/* Hat */}
+        {selectedHat === 'tophat' && (
+          <text
+            x="50"
+            y={18 - bodyBob}
+            fontSize="20"
+            textAnchor="middle"
+            style={{ userSelect: 'none' }}
+          >
+            🎩
+          </text>
+        )}
+
         {/* Ability glow */}
         {ability && (
           <circle cx="50" cy="50" r="45" fill="none" stroke={bodyColor} strokeWidth="3" opacity="0.5">
@@ -249,7 +288,10 @@ export default function NinjaGame() {
   const [playerName, setPlayerName] = useState(() => {
     return localStorage.getItem('playerName') || '';
   });
-  const [settingsTab, setSettingsTab] = useState('name'); // name, rules, abilities
+  const [selectedHat, setSelectedHat] = useState(() => {
+    return localStorage.getItem('selectedHat') || 'none';
+  });
+  const [settingsTab, setSettingsTab] = useState('name'); // name, rules, abilities, hats
 
   // Game state
   const [mousePos, setMousePos] = useState({ x: 450, y: 300 });
@@ -2223,6 +2265,16 @@ export default function NinjaGame() {
             >
               Способности
             </button>
+            <button
+              onClick={() => setSettingsTab('hats')}
+              className={`px-4 py-2 font-semibold transition-colors ${
+                settingsTab === 'hats'
+                  ? 'text-purple-400 border-b-2 border-purple-400'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              Шапки
+            </button>
           </div>
 
           {/* Name Tab */}
@@ -2337,6 +2389,56 @@ export default function NinjaGame() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Hats Tab */}
+          {settingsTab === 'hats' && (
+            <div className="space-y-4">
+              <p className="text-gray-400 text-sm mb-4">
+                Выбери шапку для своего персонажа. Она будет отображаться на ниндзя или курсоре в зависимости от твоей роли.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                {/* No hat option */}
+                <button
+                  onClick={() => {
+                    setSelectedHat('none');
+                    localStorage.setItem('selectedHat', 'none');
+                  }}
+                  className={`p-6 rounded-lg border-2 transition-all ${
+                    selectedHat === 'none'
+                      ? 'border-purple-500 bg-purple-500/20'
+                      : 'border-gray-600 bg-slate-700/50 hover:border-gray-500'
+                  }`}
+                >
+                  <div className="text-5xl mb-2">🚫</div>
+                  <h4 className="text-white font-bold mb-1">Без шапки</h4>
+                  <p className="text-gray-400 text-xs">Классический вид</p>
+                </button>
+
+                {/* Top hat option */}
+                <button
+                  onClick={() => {
+                    setSelectedHat('tophat');
+                    localStorage.setItem('selectedHat', 'tophat');
+                  }}
+                  className={`p-6 rounded-lg border-2 transition-all ${
+                    selectedHat === 'tophat'
+                      ? 'border-purple-500 bg-purple-500/20'
+                      : 'border-gray-600 bg-slate-700/50 hover:border-gray-500'
+                  }`}
+                >
+                  <div className="text-5xl mb-2">🎩</div>
+                  <h4 className="text-white font-bold mb-1">Цилиндр</h4>
+                  <p className="text-gray-400 text-xs">Элегантный стиль</p>
+                </button>
+              </div>
+
+              {selectedHat !== 'none' && (
+                <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-3 text-center">
+                  <p className="text-green-400 text-sm">✓ Шапка сохранена!</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -2664,16 +2766,32 @@ export default function NinjaGame() {
 
             {/* Cursor - hide when game over */}
             {!gameOver && (
-              <div
-                className="absolute pointer-events-none z-50 rounded-full bg-yellow-400"
-                style={{
-                  left: mousePos.x - CURSOR_SIZE / 2,
-                  top: mousePos.y - CURSOR_SIZE / 2,
-                  width: CURSOR_SIZE,
-                  height: CURSOR_SIZE,
-                  boxShadow: '0 0 15px rgba(251, 191, 36, 0.8)'
-                }}
-              />
+              <>
+                <div
+                  className="absolute pointer-events-none z-50 rounded-full bg-yellow-400"
+                  style={{
+                    left: mousePos.x - CURSOR_SIZE / 2,
+                    top: mousePos.y - CURSOR_SIZE / 2,
+                    width: CURSOR_SIZE,
+                    height: CURSOR_SIZE,
+                    boxShadow: '0 0 15px rgba(251, 191, 36, 0.8)'
+                  }}
+                />
+                {/* Hat on cursor */}
+                {selectedHat === 'tophat' && (
+                  <div
+                    className="absolute pointer-events-none z-50"
+                    style={{
+                      left: mousePos.x,
+                      top: mousePos.y - CURSOR_SIZE / 2 - 10,
+                      transform: 'translate(-50%, -50%)',
+                      fontSize: '20px'
+                    }}
+                  >
+                    🎩
+                  </div>
+                )}
+              </>
             )}
 
             {/* Clones */}
@@ -2714,6 +2832,7 @@ export default function NinjaGame() {
               isCrouching={isCrouching}
               cursorX={mousePos.x}
               cursorY={mousePos.y}
+              selectedHat={selectedHat}
             />
 
             {/* Wall indicators */}
