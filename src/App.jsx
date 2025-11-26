@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.7";
+const APP_VERSION = "1.7.8";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -16,7 +16,7 @@ const getInviteLink = (code) => {
 };
 
 // Simplified Ninja Character - smoother animations
-const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurface, animTime }) => {
+const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurface, animTime, isCrouching, cursorX, cursorY }) => {
   // Use animTime for smooth animation (passed from game loop)
   const speed = Math.sqrt((vx || 0) ** 2 + (vy || 0) ** 2);
   const isMoving = speed > 0.5;
@@ -31,6 +31,80 @@ const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurfa
 
   // Calculate facing direction from velocity
   const facingRight = (vx || 0) >= 0;
+
+  // Calculate eye direction to cursor
+  const eyeOffsetX = cursorX !== undefined ? Math.max(-2, Math.min(2, (cursorX - x) / 50)) : 0;
+  const eyeOffsetY = cursorY !== undefined ? Math.max(-1.5, Math.min(1.5, (cursorY - y) / 50)) : 0;
+
+  // Crouching animation - squished body, wide eyes
+  if (isCrouching && onSurface) {
+    const wobble = Math.sin(t * 3) * 2;
+
+    return (
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          left: x,
+          top: y,
+          transform: `translate(-50%, -50%)`,
+          opacity,
+          width: size * 2,
+          height: size * 2,
+        }}
+      >
+        <svg viewBox="0 0 100 100" width={size * 2} height={size * 2}>
+          {/* Shadow - wider when crouching */}
+          <ellipse cx="50" cy="88" rx="22" ry="5" fill="rgba(0,0,0,0.4)" />
+
+          {/* Squished legs - spread out */}
+          <ellipse cx="35" cy="82" rx="10" ry="6" fill={bodyColor} />
+          <ellipse cx="65" cy="82" rx="10" ry="6" fill={bodyColor} />
+          <ellipse cx="35" cy="85" rx="7" ry="4" fill="#1f2937" />
+          <ellipse cx="65" cy="85" rx="7" ry="4" fill="#1f2937" />
+
+          {/* Squished body - very wide and short */}
+          <ellipse cx="50" cy={72 + wobble} rx="22" ry="12" fill={bodyColor} />
+          <rect x="30" y={72 + wobble} width="40" height="4" rx="2" fill="#1f2937" />
+
+          {/* Arms sticking out to sides */}
+          <ellipse cx="22" cy={70 + wobble} rx="8" ry="6" fill={bodyColor} />
+          <circle cx="16" cy={72 + wobble} r="5" fill={headColor} />
+          <ellipse cx="78" cy={70 + wobble} rx="8" ry="6" fill={bodyColor} />
+          <circle cx="84" cy={72 + wobble} r="5" fill={headColor} />
+
+          {/* Big squished head */}
+          <ellipse cx="50" cy={52 + wobble} rx="20" ry="14" fill={headColor} stroke="#92400e" strokeWidth="2" />
+
+          {/* Headband */}
+          <ellipse cx="50" cy={50 + wobble} rx="20" ry="4" fill={bodyColor} />
+          {/* Headband tails drooping */}
+          <path d={`M 70 ${50 + wobble} Q 78 ${55 + wobble} 75 ${62 + wobble}`} stroke={bodyColor} strokeWidth="4" fill="none" strokeLinecap="round" />
+          <path d={`M 70 ${50 + wobble} Q 82 ${52 + wobble} 80 ${58 + wobble}`} stroke={bodyColor} strokeWidth="3" fill="none" strokeLinecap="round" />
+
+          {/* Big worried eyes that follow cursor */}
+          <ellipse cx="42" cy={48 + wobble} rx="6" ry="7" fill="white" />
+          <ellipse cx="58" cy={48 + wobble} rx="6" ry="7" fill="white" />
+          {/* Pupils following cursor */}
+          <circle cx={42 + eyeOffsetX * 1.5} cy={49 + wobble + eyeOffsetY} r="3" fill="black" />
+          <circle cx={58 + eyeOffsetX * 1.5} cy={49 + wobble + eyeOffsetY} r="3" fill="black" />
+          {/* Eye shine */}
+          <circle cx={40 + eyeOffsetX} cy={46 + wobble + eyeOffsetY * 0.5} r="1.5" fill="white" />
+          <circle cx={56 + eyeOffsetX} cy={46 + wobble + eyeOffsetY * 0.5} r="1.5" fill="white" />
+
+          {/* Sweat drop */}
+          <path d={`M 72 ${42 + wobble} Q 74 ${38 + wobble} 72 ${35 + wobble}`} fill="#60a5fa" />
+          <circle cx="72" cy={43 + wobble} r="2" fill="#60a5fa" />
+
+          {/* Nervous smile */}
+          <path d={`M 44 ${58 + wobble} Q 50 ${62 + wobble} 56 ${58 + wobble}`}
+            stroke="black" strokeWidth="2" fill="none" />
+          {/* Nervous lines */}
+          <line x1="44" y1={59 + wobble} x2="42" y2={61 + wobble} stroke="black" strokeWidth="1" />
+          <line x1="56" y1={59 + wobble} x2="58" y2={61 + wobble} stroke="black" strokeWidth="1" />
+        </svg>
+      </div>
+    );
+  }
 
   // Leg animation
   const leftLegAngle = isInAir ? -20 : runPhase * 35;
@@ -149,6 +223,7 @@ export default function NinjaGame() {
   const [animTime, setAnimTime] = useState(0);
   const [abilityCooldowns, setAbilityCooldowns] = useState({});
   const [keysPressed, setKeysPressed] = useState({});
+  const [isCrouching, setIsCrouching] = useState(false); // Is ninja crouching (down key)
   const [cursorLines, setCursorLines] = useState([]); // Physical lines drawn by cursor
   const [isDrawing, setIsDrawing] = useState(false); // Is mouse button pressed
   const [linkCopied, setLinkCopied] = useState(false); // Show "link copied" message
@@ -798,6 +873,7 @@ export default function NinjaGame() {
       }
       if (['s', 'S', 'ы', 'Ы', 'ArrowDown'].includes(e.key)) {
         keysPressedRef.current.down = true;
+        setIsCrouching(true);
       }
       if (['a', 'A', 'ф', 'Ф', 'ArrowLeft'].includes(e.key)) {
         keysPressedRef.current.left = true;
@@ -835,6 +911,7 @@ export default function NinjaGame() {
       }
       if (['s', 'S', 'ы', 'Ы', 'ArrowDown'].includes(e.key)) {
         keysPressedRef.current.down = false;
+        setIsCrouching(false);
       }
       if (['a', 'A', 'ф', 'Ф', 'ArrowLeft'].includes(e.key)) {
         keysPressedRef.current.left = false;
@@ -866,6 +943,7 @@ export default function NinjaGame() {
       }
       if (['s', 'S', 'ы', 'Ы', 'ArrowDown'].includes(e.key)) {
         keysPressedRef.current.down = true;
+        setIsCrouching(true);
       }
       if (['a', 'A', 'ф', 'Ф', 'ArrowLeft'].includes(e.key)) {
         keysPressedRef.current.left = true;
@@ -906,6 +984,7 @@ export default function NinjaGame() {
       }
       if (['s', 'S', 'ы', 'Ы', 'ArrowDown'].includes(e.key)) {
         keysPressedRef.current.down = false;
+        setIsCrouching(false);
       }
       if (['a', 'A', 'ф', 'Ф', 'ArrowLeft'].includes(e.key)) {
         keysPressedRef.current.left = false;
@@ -2176,6 +2255,9 @@ export default function NinjaGame() {
               vy={chaser.vy}
               onSurface={chaser.onSurface}
               animTime={animTime}
+              isCrouching={isCrouching}
+              cursorX={mousePos.x}
+              cursorY={mousePos.y}
             />
 
             {/* Wall indicators */}
