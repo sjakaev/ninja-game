@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.26";
+const APP_VERSION = "1.7.27";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -477,7 +477,7 @@ export default function NinjaGame() {
 
     const code = generateRoomCode();
     setRoomCode(code);
-    setGameState('host');
+    setGameState('host'); // Show "connecting..." state
 
     if (peer) {
       peer.destroy();
@@ -492,16 +492,29 @@ export default function NinjaGame() {
       }
     });
 
+    // Timeout for host peer creation - 10 seconds
+    const timeout = setTimeout(() => {
+      console.error('Host peer creation timeout');
+      alert('Не удалось создать комнату! Попробуй ещё раз.');
+      hostPeer.destroy();
+      resetToMenu();
+    }, 10000);
+
     hostPeer.on('open', (id) => {
+      clearTimeout(timeout);
       console.log('Host Peer ID:', id);
+      setIsPeerReady(true);
     });
 
     hostPeer.on('error', (err) => {
+      clearTimeout(timeout);
       console.error('Host peer error:', err);
       if (err.type === 'unavailable-id') {
         alert('Этот код уже занят, попробуй ещё раз!');
-        resetToMenu();
+      } else {
+        alert('Ошибка соединения! Попробуй ещё раз.');
       }
+      resetToMenu();
     });
 
     setPeer(hostPeer);
