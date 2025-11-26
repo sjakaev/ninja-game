@@ -1239,7 +1239,7 @@ export default function NinjaGame() {
         }
 
         // Keyboard movement - use ref for instant response
-        const moveSpeed = 0.8;
+        const moveSpeed = 0.4;
         const isRunning = keys.left || keys.right;
         if (keys.left) newChaser.vx -= moveSpeed * dt;
         if (keys.right) newChaser.vx += moveSpeed * dt;
@@ -1741,7 +1741,7 @@ export default function NinjaGame() {
         }
 
         // Keyboard movement - use ref for instant response
-        const moveSpeed = 0.8;
+        const moveSpeed = 0.4;
         const isRunning = keys.left || keys.right;
         if (keys.left) newChaser.vx -= moveSpeed * dt;
         if (keys.right) newChaser.vx += moveSpeed * dt;
