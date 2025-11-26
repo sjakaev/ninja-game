@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.20";
+const APP_VERSION = "1.7.21";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -638,14 +638,25 @@ export default function NinjaGame() {
         break;
       case 'mouseMove':
         if (currentRole === 'ninja') {
-          mousePosRef.current = { x: data.x, y: data.y };
-          setMousePos({ x: data.x, y: data.y });
+          // Convert normalized coordinates (0-1) to local screen size
+          const localX = data.nx * GAME_WIDTH;
+          const localY = data.ny * GAME_HEIGHT;
+          mousePosRef.current = { x: localX, y: localY };
+          setMousePos({ x: localX, y: localY });
         }
         break;
       case 'ninjaMove':
         if (currentRole === 'cursor') {
-          setChaser(data.chaser);
-          chaserRef.current = data.chaser;
+          // Convert normalized coordinates to local screen size
+          const localChaser = {
+            ...data.chaser,
+            x: data.chaser.nx * GAME_WIDTH,
+            y: data.chaser.ny * GAME_HEIGHT,
+            vx: data.chaser.nvx * GAME_WIDTH,
+            vy: data.chaser.nvy * GAME_HEIGHT
+          };
+          setChaser(localChaser);
+          chaserRef.current = localChaser;
           if (data.ability) {
             setCurrentAbility(data.ability);
             currentAbilityRef.current = data.ability;
@@ -663,12 +674,14 @@ export default function NinjaGame() {
         }
         break;
       case 'pullCursor':
-        // Vortex/Magnet pulling the cursor
+        // Vortex/Magnet pulling the cursor - convert normalized pull to local
         if (currentRole === 'cursor') {
+          const localPullX = data.npullX * GAME_WIDTH;
+          const localPullY = data.npullY * GAME_HEIGHT;
           setMousePos(m => {
             const newPos = {
-              x: Math.max(CURSOR_SIZE, Math.min(GAME_WIDTH - CURSOR_SIZE, m.x + data.pullX)),
-              y: Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, m.y + data.pullY))
+              x: Math.max(CURSOR_SIZE, Math.min(GAME_WIDTH - CURSOR_SIZE, m.x + localPullX)),
+              y: Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, m.y + localPullY))
             };
             mousePosRef.current = newPos;
             return newPos;
@@ -679,10 +692,17 @@ export default function NinjaGame() {
         setTimeScale(data.scale);
         break;
       case 'cursorLine':
-        // Receive line drawn by cursor player
+        // Receive line drawn by cursor player - convert normalized to local
         if (currentRole === 'ninja') {
+          const localLine = {
+            ...data.line,
+            x1: data.line.nx1 * GAME_WIDTH,
+            y1: data.line.ny1 * GAME_HEIGHT,
+            x2: data.line.nx2 * GAME_WIDTH,
+            y2: data.line.ny2 * GAME_HEIGHT
+          };
           setCursorLines(prev => {
-            const newLines = [...prev.slice(-50), data.line];
+            const newLines = [...prev.slice(-50), localLine];
             cursorLinesRef.current = newLines;
             return newLines;
           });
@@ -849,7 +869,8 @@ export default function NinjaGame() {
         setMousePos({ x: newX, y: newY });
         mousePosRef.current = { x: newX, y: newY };
         if (gameMode === 'multi' && !gameOverRef.current) {
-          sendData({ type: 'mouseMove', x: newX, y: newY });
+          // Send normalized coordinates (0-1) for cross-screen compatibility
+          sendData({ type: 'mouseMove', nx: newX / GAME_WIDTH, ny: newY / GAME_HEIGHT });
         }
 
         // Draw lines when mouse is pressed (only when game is active)
@@ -870,7 +891,15 @@ export default function NinjaGame() {
             };
             setCursorLines(prev => [...prev.slice(-50), newLine]); // Max 50 segments
             if (gameMode === 'multi') {
-              sendData({ type: 'cursorLine', line: newLine });
+              // Send normalized line coordinates
+              const normalizedLine = {
+                ...newLine,
+                nx1: newLine.x1 / GAME_WIDTH,
+                ny1: newLine.y1 / GAME_HEIGHT,
+                nx2: newLine.x2 / GAME_WIDTH,
+                ny2: newLine.y2 / GAME_HEIGHT
+              };
+              sendData({ type: 'cursorLine', line: normalizedLine });
             }
             lastDrawPos.current = { x: newX, y: newY };
           }
@@ -1666,7 +1695,8 @@ export default function NinjaGame() {
                 y: Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, currentMouse.y + pullY))
               };
               setMousePos(mousePosRef.current);
-              sendData({ type: 'pullCursor', pullX, pullY });
+              // Send normalized pull values
+              sendData({ type: 'pullCursor', npullX: pullX / GAME_WIDTH, npullY: pullY / GAME_HEIGHT });
               break;
             case 'TIME_SLOW':
               if (abilityTime === abilitiesFull.TIME_SLOW.duration) {
@@ -1801,7 +1831,15 @@ export default function NinjaGame() {
           }
         }
 
-        sendData({ type: 'ninjaMove', chaser: newChaser, ability: ability });
+        // Send normalized coordinates (0-1) for cross-screen compatibility
+        const normalizedChaser = {
+          ...newChaser,
+          nx: newChaser.x / GAME_WIDTH,
+          ny: newChaser.y / GAME_HEIGHT,
+          nvx: newChaser.vx / GAME_WIDTH,
+          nvy: newChaser.vy / GAME_HEIGHT
+        };
+        sendData({ type: 'ninjaMove', chaser: normalizedChaser, ability: ability });
 
         return newChaser;
       });
