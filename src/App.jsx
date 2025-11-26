@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.22";
+const APP_VERSION = "1.7.23";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -709,6 +709,32 @@ export default function NinjaGame() {
             return newLines;
           });
         }
+        break;
+      case 'restartGame':
+        // Other player wants to restart - go to role selection
+        setGameState('waiting');
+        setRole(null);
+        roleRef.current = null;
+        setGameOver(false);
+        gameOverRef.current = false;
+        setScore(0);
+        scoreRef.current = 0;
+        setChaser({ x: 450, y: 550, vx: 0, vy: 0, onSurface: 'ground', rotation: 0, scale: 1 });
+        chaserRef.current = { x: 450, y: 550, vx: 0, vy: 0, onSurface: 'ground', rotation: 0, scale: 1 };
+        setMousePos({ x: 450, y: 300 });
+        mousePosRef.current = { x: 450, y: 300 };
+        targetPosRef.current = null;
+        setClones([]);
+        setShockwaves([]);
+        setParticles([]);
+        setTrails([]);
+        setCursorLines([]);
+        cursorLinesRef.current = [];
+        setCurrentAbility(null);
+        currentAbilityRef.current = null;
+        setAbilityCooldowns({});
+        setTimeScale(1);
+        bunnyHopRef.current = { streak: 0, lastLandTime: 0, speed: 0 };
         break;
     }
   };
@@ -1978,6 +2004,35 @@ export default function NinjaGame() {
     setTimeScale(1);
   };
 
+  // Restart multiplayer game - go back to role selection
+  const restartMultiplayer = () => {
+    setGameState('waiting');
+    setRole(null);
+    roleRef.current = null;
+    setGameOver(false);
+    gameOverRef.current = false;
+    setScore(0);
+    scoreRef.current = 0;
+    setChaser({ x: 450, y: 550, vx: 0, vy: 0, onSurface: 'ground', rotation: 0, scale: 1 });
+    chaserRef.current = { x: 450, y: 550, vx: 0, vy: 0, onSurface: 'ground', rotation: 0, scale: 1 };
+    setMousePos({ x: 450, y: 300 });
+    mousePosRef.current = { x: 450, y: 300 };
+    targetPosRef.current = null;
+    setClones([]);
+    setShockwaves([]);
+    setParticles([]);
+    setTrails([]);
+    setCursorLines([]);
+    cursorLinesRef.current = [];
+    setCurrentAbility(null);
+    currentAbilityRef.current = null;
+    setAbilityCooldowns({});
+    setTimeScale(1);
+    bunnyHopRef.current = { streak: 0, lastLandTime: 0, speed: 0 };
+    // Notify other player
+    sendData({ type: 'restartGame' });
+  };
+
   const copyInviteLink = () => {
     const link = getInviteLink(roomCode);
     navigator.clipboard.writeText(link);
@@ -2557,19 +2612,17 @@ export default function NinjaGame() {
                   </p>
                   <p className="text-6xl font-bold text-yellow-400 mb-6">{score} очков</p>
                   <button
-                    onClick={isSinglePlayer ? startSinglePlayer : resetToMenu}
+                    onClick={isSinglePlayer ? startSinglePlayer : restartMultiplayer}
                     className="bg-gradient-to-r from-green-500 to-green-600 text-white px-12 py-4 rounded-2xl text-2xl font-bold hover:scale-110 transition-transform"
                   >
-                    🔄 {isSinglePlayer ? 'Ещё раз!' : 'В меню'}
+                    🔄 {isSinglePlayer ? 'Ещё раз!' : 'Играть ещё!'}
                   </button>
-                  {isSinglePlayer && (
-                    <button
-                      onClick={resetToMenu}
-                      className="block w-full mt-4 bg-slate-700 text-white px-8 py-3 rounded-xl text-lg hover:bg-slate-600 transition-colors"
-                    >
-                      ← Главное меню
-                    </button>
-                  )}
+                  <button
+                    onClick={resetToMenu}
+                    className="block w-full mt-4 bg-slate-700 text-white px-8 py-3 rounded-xl text-lg hover:bg-slate-600 transition-colors"
+                  >
+                    ← Главное меню
+                  </button>
                 </div>
               </div>
             )}
