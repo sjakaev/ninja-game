@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.6.4";
+const APP_VERSION = "1.7.0";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -148,6 +148,8 @@ export default function NinjaGame() {
   const [animTime, setAnimTime] = useState(0);
   const [abilityCooldowns, setAbilityCooldowns] = useState({});
   const [keysPressed, setKeysPressed] = useState({});
+  const [cursorLines, setCursorLines] = useState([]); // Physical lines drawn by cursor
+  const [isDrawing, setIsDrawing] = useState(false); // Is mouse button pressed
 
   const gameAreaRef = useRef(null);
   const animationRef = useRef(null);
@@ -157,6 +159,8 @@ export default function NinjaGame() {
   const mousePosRef = useRef({ x: 450, y: 300 });
   const chaserRef = useRef({ x: 450, y: 550, vx: 0, vy: 0, onSurface: 'ground', rotation: 0, scale: 1 });
   const keysPressedRef = useRef({});
+  const lastDrawPos = useRef(null); // Last position where line segment was added
+  const isDrawingRef = useRef(false);
 
   // Dynamic game size for fullscreen
   const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
@@ -178,6 +182,54 @@ export default function NinjaGame() {
   const GRAVITY = 0.6;
   const CHASER_SIZE = 45;
   const CURSOR_SIZE = 24;
+  const LINE_THICKNESS = 8; // Thickness of cursor lines for collision
+
+  // Check collision between circle and line segment
+  const checkLineCollision = useCallback((cx, cy, radius, line) => {
+    const { x1, y1, x2, y2 } = line;
+
+    // Vector from line start to end
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lenSq = dx * dx + dy * dy;
+
+    if (lenSq === 0) return null; // Zero length line
+
+    // Project circle center onto line
+    const t = Math.max(0, Math.min(1, ((cx - x1) * dx + (cy - y1) * dy) / lenSq));
+
+    // Closest point on line segment
+    const closestX = x1 + t * dx;
+    const closestY = y1 + t * dy;
+
+    // Distance from circle center to closest point
+    const distX = cx - closestX;
+    const distY = cy - closestY;
+    const dist = Math.sqrt(distX * distX + distY * distY);
+
+    // Check if collision
+    if (dist < radius + LINE_THICKNESS / 2) {
+      // Calculate line normal (perpendicular to line)
+      const lineLen = Math.sqrt(lenSq);
+      const normalX = -dy / lineLen;
+      const normalY = dx / lineLen;
+
+      // Make sure normal points away from circle
+      const dotProduct = normalX * distX + normalY * distY;
+      const finalNormalX = dotProduct > 0 ? normalX : -normalX;
+      const finalNormalY = dotProduct > 0 ? normalY : -normalY;
+
+      return {
+        normalX: finalNormalX,
+        normalY: finalNormalY,
+        penetration: radius + LINE_THICKNESS / 2 - dist,
+        closestX,
+        closestY
+      };
+    }
+
+    return null;
+  }, []);
 
   // Full abilities for single player
   const abilitiesFull = {
@@ -474,6 +526,12 @@ export default function NinjaGame() {
       case 'timeSlow':
         setTimeScale(data.scale);
         break;
+      case 'cursorLine':
+        // Receive line drawn by cursor player
+        if (role === 'ninja') {
+          setCursorLines(prev => [...prev.slice(-50), data.line]);
+        }
+        break;
     }
   };
 
@@ -489,6 +547,7 @@ export default function NinjaGame() {
     setShockwaves([]);
     setParticles([]);
     setTrails([]);
+    setCursorLines([]);
     // Reset positions
     const initialChaser = { x: 450, y: 550, vx: 0, vy: 0, onSurface: 'ground', rotation: 0, scale: 1 };
     const initialMouse = { x: 450, y: 300 };
@@ -611,7 +670,7 @@ export default function NinjaGame() {
     }
   }, [mousePos, createParticles]);
 
-  // Mouse movement
+  // Mouse movement and drawing
   useEffect(() => {
     if (gameState !== 'singleplayer' && gameState !== 'playing') return;
     if (gameMode === 'multi' && role !== 'cursor') return;
@@ -633,11 +692,60 @@ export default function NinjaGame() {
         if (gameMode === 'multi') {
           sendData({ type: 'mouseMove', x: newX, y: newY });
         }
+
+        // Draw lines when mouse is pressed
+        if (isDrawingRef.current && lastDrawPos.current) {
+          const dx = newX - lastDrawPos.current.x;
+          const dy = newY - lastDrawPos.current.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          // Add line segment if moved enough distance
+          if (dist > 10) {
+            const newLine = {
+              id: Math.random(),
+              x1: lastDrawPos.current.x,
+              y1: lastDrawPos.current.y,
+              x2: newX,
+              y2: newY,
+              createdAt: Date.now()
+            };
+            setCursorLines(prev => [...prev.slice(-50), newLine]); // Max 50 segments
+            if (gameMode === 'multi') {
+              sendData({ type: 'cursorLine', line: newLine });
+            }
+            lastDrawPos.current = { x: newX, y: newY };
+          }
+        }
       }
     };
 
+    const handleMouseDown = (e) => {
+      if (gameAreaRef.current && !gameOver) {
+        const rect = gameAreaRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        if (x >= 0 && x <= GAME_WIDTH && y >= 0 && y <= GAME_HEIGHT) {
+          isDrawingRef.current = true;
+          setIsDrawing(true);
+          lastDrawPos.current = { x, y };
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      isDrawingRef.current = false;
+      setIsDrawing(false);
+      lastDrawPos.current = null;
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
   }, [gameState, gameMode, role, gameOver, timeScale, mousePos]);
 
   // Keyboard controls (single player ninja - movement + abilities)
@@ -926,6 +1034,29 @@ export default function NinjaGame() {
           newChaser.vx = 0;
         }
 
+        // Collision with cursor lines
+        for (const line of cursorLines) {
+          const collision = checkLineCollision(newChaser.x, newChaser.y, currentSize / 2, line);
+          if (collision) {
+            // Push ninja out of line
+            newChaser.x += collision.normalX * collision.penetration;
+            newChaser.y += collision.normalY * collision.penetration;
+
+            // Check if line is mostly horizontal (can stand on it)
+            const isHorizontal = Math.abs(collision.normalY) > 0.7;
+            if (isHorizontal && collision.normalY < 0 && newChaser.vy > 0) {
+              // Standing on line from above
+              newChaser.vy = 0;
+              newChaser.onSurface = 'line';
+            } else {
+              // Bounce off line
+              const dotProduct = newChaser.vx * collision.normalX + newChaser.vy * collision.normalY;
+              newChaser.vx -= 1.5 * dotProduct * collision.normalX;
+              newChaser.vy -= 1.5 * dotProduct * collision.normalY;
+            }
+          }
+        }
+
         chaserRef.current = newChaser;
         setChaser(newChaser);
       }
@@ -1064,6 +1195,29 @@ export default function NinjaGame() {
               newChaser.vx = Math.cos(jumpAngle) * jumpPower;
               newChaser.vy = Math.sin(jumpAngle) * jumpPower - 3;
               createParticles(newChaser.x, newChaser.y, '#10b981', 15);
+            }
+          }
+
+          // Collision with cursor lines
+          for (const line of cursorLines) {
+            const collision = checkLineCollision(newChaser.x, newChaser.y, currentSize / 2, line);
+            if (collision) {
+              // Push ninja out of line
+              newChaser.x += collision.normalX * collision.penetration;
+              newChaser.y += collision.normalY * collision.penetration;
+
+              // Check if line is mostly horizontal (can stand on it)
+              const isHorizontal = Math.abs(collision.normalY) > 0.7;
+              if (isHorizontal && collision.normalY < 0 && newChaser.vy > 0) {
+                // Standing on line from above
+                newChaser.vy = 0;
+                newChaser.onSurface = 'line';
+              } else {
+                // Bounce off line
+                const dotProduct = newChaser.vx * collision.normalX + newChaser.vy * collision.normalY;
+                newChaser.vx -= 1.5 * dotProduct * collision.normalX;
+                newChaser.vy -= 1.5 * dotProduct * collision.normalY;
+              }
             }
           }
 
@@ -1326,6 +1480,29 @@ export default function NinjaGame() {
           newChaser.vx = -Math.abs(newChaser.vx) * 0.6;
         }
 
+        // Collision with cursor lines (multiplayer)
+        for (const line of cursorLines) {
+          const collision = checkLineCollision(newChaser.x, newChaser.y, currentSize / 2, line);
+          if (collision) {
+            // Push ninja out of line
+            newChaser.x += collision.normalX * collision.penetration;
+            newChaser.y += collision.normalY * collision.penetration;
+
+            // Check if line is mostly horizontal (can stand on it)
+            const isHorizontal = Math.abs(collision.normalY) > 0.7;
+            if (isHorizontal && collision.normalY < 0 && newChaser.vy > 0) {
+              // Standing on line from above
+              newChaser.vy = 0;
+              newChaser.onSurface = 'line';
+            } else {
+              // Bounce off line
+              const dotProduct = newChaser.vx * collision.normalX + newChaser.vy * collision.normalY;
+              newChaser.vx -= 1.5 * dotProduct * collision.normalX;
+              newChaser.vy -= 1.5 * dotProduct * collision.normalY;
+            }
+          }
+        }
+
         sendData({ type: 'ninjaMove', chaser: newChaser, ability: currentAbility });
 
         return newChaser;
@@ -1339,6 +1516,18 @@ export default function NinjaGame() {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, [gameState, role, gameMode, gameOver, currentAbility, abilityTimer, score, timeScale]);
+
+  // Clean up old cursor lines (5 second lifetime)
+  useEffect(() => {
+    if (cursorLines.length === 0) return;
+
+    const cleanup = setInterval(() => {
+      const now = Date.now();
+      setCursorLines(prev => prev.filter(line => now - line.createdAt < 5000));
+    }, 100);
+
+    return () => clearInterval(cleanup);
+  }, [cursorLines.length]);
 
   // Ability timer (works for both single and multiplayer)
   useEffect(() => {
@@ -1814,6 +2003,29 @@ export default function NinjaGame() {
                 }}
               />
             ))}
+
+            {/* Cursor Lines - physical platforms */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+              {cursorLines.map(line => {
+                const age = Date.now() - line.createdAt;
+                const opacity = Math.max(0, 1 - age / 5000); // Fade out over 5 seconds
+                return (
+                  <line
+                    key={line.id}
+                    x1={line.x1}
+                    y1={line.y1}
+                    x2={line.x2}
+                    y2={line.y2}
+                    stroke={`rgba(34, 211, 238, ${opacity})`}
+                    strokeWidth={LINE_THICKNESS}
+                    strokeLinecap="round"
+                    style={{
+                      filter: `drop-shadow(0 0 ${8 * opacity}px rgba(34, 211, 238, 0.8))`
+                    }}
+                  />
+                );
+              })}
+            </svg>
 
             {/* Cursor */}
             <div
