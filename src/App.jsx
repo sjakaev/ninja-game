@@ -246,7 +246,10 @@ export default function NinjaGame() {
   const [connection, setConnection] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [opponentName, setOpponentName] = useState('');
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState(() => {
+    return localStorage.getItem('playerName') || '';
+  });
+  const [settingsTab, setSettingsTab] = useState('name'); // name, rules, abilities
 
   // Game state
   const [mousePos, setMousePos] = useState({ x: 450, y: 300 });
@@ -2085,6 +2088,17 @@ export default function NinjaGame() {
                 <div className="text-xs opacity-80 font-normal">Играй с другом онлайн</div>
               </div>
             </button>
+
+            <button
+              onClick={() => setGameState('settings')}
+              className="w-full bg-gradient-to-r from-gray-600 to-gray-700 text-white px-5 py-4 rounded-xl text-lg font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-3"
+            >
+              <span className="text-2xl">⚙️</span>
+              <div className="text-left">
+                <div>Настройки</div>
+                <div className="text-xs opacity-80 font-normal">Имя, правила и скиллы</div>
+              </div>
+            </button>
           </div>
 
           <div className="mt-6 text-center">
@@ -2149,6 +2163,188 @@ export default function NinjaGame() {
             className="w-full mt-4 bg-slate-700 text-gray-300 px-5 py-2.5 rounded-lg hover:bg-slate-600 transition-colors"
           >
             ← Назад
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Settings screen
+  if (gameState === 'settings') {
+    const savePlayerName = () => {
+      if (playerName.trim()) {
+        localStorage.setItem('playerName', playerName.trim());
+        alert('Имя сохранено!');
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-slate-900 to-black flex items-center justify-center p-4">
+        <div className="bg-slate-800/90 rounded-2xl shadow-2xl p-8 max-w-3xl w-full border border-purple-500/50 relative max-h-[90vh] overflow-y-auto">
+          <div className="absolute top-3 right-3 text-xs bg-purple-600 text-white px-2 py-1 rounded">
+            v{APP_VERSION}
+          </div>
+
+          <div className="text-center mb-6">
+            <span className="text-5xl">⚙️</span>
+          </div>
+
+          <h1 className="text-3xl font-bold text-white mb-6 text-center">Настройки</h1>
+
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6 border-b border-gray-700">
+            <button
+              onClick={() => setSettingsTab('name')}
+              className={`px-4 py-2 font-semibold transition-colors ${
+                settingsTab === 'name'
+                  ? 'text-purple-400 border-b-2 border-purple-400'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              Имя игрока
+            </button>
+            <button
+              onClick={() => setSettingsTab('rules')}
+              className={`px-4 py-2 font-semibold transition-colors ${
+                settingsTab === 'rules'
+                  ? 'text-purple-400 border-b-2 border-purple-400'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              Правила
+            </button>
+            <button
+              onClick={() => setSettingsTab('abilities')}
+              className={`px-4 py-2 font-semibold transition-colors ${
+                settingsTab === 'abilities'
+                  ? 'text-purple-400 border-b-2 border-purple-400'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              Способности
+            </button>
+          </div>
+
+          {/* Name Tab */}
+          {settingsTab === 'name' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-300 mb-2 text-sm font-medium">
+                  Твоё имя
+                </label>
+                <input
+                  type="text"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="Введи своё имя"
+                  className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
+                  maxLength={20}
+                />
+                <p className="text-gray-400 text-xs mt-2">
+                  Это имя будет автоматически подставляться в мультиплеере
+                </p>
+              </div>
+              <button
+                onClick={savePlayerName}
+                disabled={!playerName.trim()}
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-5 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Сохранить имя
+              </button>
+            </div>
+          )}
+
+          {/* Rules Tab */}
+          {settingsTab === 'rules' && (
+            <div className="space-y-4 text-gray-300">
+              <div className="bg-slate-700/50 p-4 rounded-lg">
+                <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                  <span>🥷</span> Режим "Ниндзя"
+                </h3>
+                <ul className="space-y-2 text-sm">
+                  <li>• Управление: <span className="text-purple-400">WASD</span> или стрелки</li>
+                  <li>• Прыжок: <span className="text-purple-400">SPACE</span> или <span className="text-purple-400">W/↑</span></li>
+                  <li>• Способности: клавиши <span className="text-purple-400">1-9</span></li>
+                  <li>• Цель: поймать курсор за минимальное время</li>
+                  <li>• Можно карабкаться по стенам и прыгать от них</li>
+                  <li>• <span className="text-yellow-400">Банни-хоп:</span> прыгай быстро после приземления для ускорения!</li>
+                </ul>
+              </div>
+
+              <div className="bg-slate-700/50 p-4 rounded-lg">
+                <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                  <span>🎯</span> Режим "Курсор"
+                </h3>
+                <ul className="space-y-2 text-sm">
+                  <li>• Управление: движение мышкой</li>
+                  <li>• Рисование линий: зажми <span className="text-purple-400">ЛКМ</span> и веди мышью</li>
+                  <li>• Цель: продержаться как можно дольше</li>
+                  <li>• AI-ниндзя будет тебя преследовать</li>
+                  <li>• Используй линии для защиты и создания препятствий</li>
+                </ul>
+              </div>
+
+              <div className="bg-slate-700/50 p-4 rounded-lg">
+                <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                  <span>👥</span> Мультиплеер
+                </h3>
+                <ul className="space-y-2 text-sm">
+                  <li>• Один игрок создаёт комнату, второй подключается</li>
+                  <li>• Случайный выбор ролей (ниндзя или курсор)</li>
+                  <li>• Играйте вместе с друзьями онлайн!</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Abilities Tab */}
+          {settingsTab === 'abilities' && (
+            <div className="space-y-3">
+              <p className="text-gray-400 text-sm mb-4">
+                Все способности ниндзя и их эффекты:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {abilityKeys.map((key, index) => {
+                  const ability = abilitiesFull[key];
+                  const descriptions = {
+                    SUPER_JUMP: 'Мощный прыжок вверх. Используй для быстрого подъёма.',
+                    DASH: 'Молниеносный рывок в направлении курсора.',
+                    GROW: 'Увеличивает размер ниндзя на 80%. Легче поймать курсор!',
+                    CLONE: 'Создаёт 4 клона, которые могут столкнуть курсор.',
+                    VORTEX: 'Притягивает курсор к себе вихрем.',
+                    GHOST: 'Ниндзя становится полупрозрачным призраком.',
+                    SHOCKWAVE: 'Выпускает 3 ударные волны во все стороны.',
+                    TIME_SLOW: 'Замедляет время для более точного контроля.',
+                    MAGNET: 'Притягивает курсор как магнит.'
+                  };
+                  return (
+                    <div key={key} className="bg-slate-700/50 p-4 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-2xl">{ability.emoji}</span>
+                        <div className="flex-1">
+                          <h4 className="text-white font-bold">{ability.name}</h4>
+                          <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <span className="bg-purple-600/30 px-2 py-0.5 rounded">
+                              Клавиша {index + 1}
+                            </span>
+                            <span>CD: {(ability.cooldown / 1000).toFixed(1)}s</span>
+                            <span>Длительность: {(ability.duration / 1000).toFixed(1)}s</span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-300 text-sm">{descriptions[key]}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={resetToMenu}
+            className="w-full mt-6 bg-slate-700 text-gray-300 px-5 py-3 rounded-lg hover:bg-slate-600 transition-colors font-medium"
+          >
+            ← Назад в меню
           </button>
         </div>
       </div>
