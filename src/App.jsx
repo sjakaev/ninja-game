@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.5";
+const APP_VERSION = "1.7.6";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -125,6 +125,7 @@ export default function NinjaGame() {
   const [roomCode, setRoomCode] = useState('');
   const [inputRoomCode, setInputRoomCode] = useState('');
   const [peer, setPeer] = useState(null);
+  const [isPeerReady, setIsPeerReady] = useState(false);
   const [connection, setConnection] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [opponentName, setOpponentName] = useState('');
@@ -273,16 +274,19 @@ export default function NinjaGame() {
 
     newPeer.on('open', (id) => {
       console.log('Peer ID:', id);
+      setIsPeerReady(true);
     });
 
     newPeer.on('error', (err) => {
       console.error('Peer error:', err);
+      setIsPeerReady(false);
     });
 
     setPeer(newPeer);
 
     return () => {
       if (newPeer) newPeer.destroy();
+      setIsPeerReady(false);
     };
   }, [gameMode]);
 
@@ -297,50 +301,63 @@ export default function NinjaGame() {
     }
   }, [gameState]);
 
-  // Auto-connect when we have peer and join code from URL
+  // Auto-connect when we have peer ready and join code from URL
   useEffect(() => {
-    if (peer && inputRoomCode && gameMode === 'multi' && gameState === 'menu') {
-      // Small delay to ensure peer is ready
-      const timer = setTimeout(() => {
-        if (!playerName.trim()) {
-          setPlayerName('Игрок');
-        }
-        setGameState('client');
+    if (isPeerReady && peer && inputRoomCode && gameMode === 'multi' && gameState === 'menu') {
+      if (!playerName.trim()) {
+        setPlayerName('Игрок');
+      }
+      setGameState('client');
 
-        const conn = peer.connect(inputRoomCode);
+      console.log('Connecting to host:', inputRoomCode);
+      const conn = peer.connect(inputRoomCode);
+      let connected = false;
 
-        conn.on('open', () => {
-          console.log('Connected to host');
-          setIsConnected(true);
-          setConnection(conn);
-          connRef.current = conn;
-
-          conn.send({ type: 'join', playerName: playerName || 'Игрок' });
-
-          conn.on('data', (data) => {
-            handleReceivedData(data);
-          });
-
-          conn.on('close', () => {
-            setIsConnected(false);
-            alert('Соединение потеряно!');
-            resetToMenu();
-          });
-        });
-
-        conn.on('error', (err) => {
-          console.error('Connection error:', err);
-          alert('Не удалось подключиться! Комната не найдена.');
+      // Timeout for connection - 10 seconds
+      const timeout = setTimeout(() => {
+        if (!connected) {
+          console.error('Connection timeout');
+          alert('Не удалось подключиться! Время ожидания истекло. Возможно, хост закрыл комнату.');
+          conn.close();
           setGameState('menu');
           setInputRoomCode('');
+        }
+      }, 10000);
+
+      conn.on('open', () => {
+        connected = true;
+        clearTimeout(timeout);
+        console.log('Connected to host');
+        setIsConnected(true);
+        setConnection(conn);
+        connRef.current = conn;
+
+        conn.send({ type: 'join', playerName: playerName || 'Игрок' });
+
+        conn.on('data', (data) => {
+          handleReceivedData(data);
         });
 
-        setConnection(conn);
-      }, 500);
+        conn.on('close', () => {
+          setIsConnected(false);
+          alert('Соединение потеряно!');
+          resetToMenu();
+        });
+      });
 
-      return () => clearTimeout(timer);
+      conn.on('error', (err) => {
+        clearTimeout(timeout);
+        console.error('Connection error:', err);
+        alert('Не удалось подключиться! Комната не найдена.');
+        setGameState('menu');
+        setInputRoomCode('');
+      });
+
+      setConnection(conn);
+
+      return () => clearTimeout(timeout);
     }
-  }, [peer, inputRoomCode, gameMode, gameState, playerName]);
+  }, [isPeerReady, peer, inputRoomCode, gameMode, gameState, playerName]);
 
   // Particles
   const createParticles = useCallback((x, y, color, count = 15) => {
