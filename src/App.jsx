@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.29";
+const APP_VERSION = "1.7.30";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -1272,10 +1272,7 @@ export default function NinjaGame() {
 
           newChaser.onSurface = null;
         } else if ((keys.jump || keys.up) && currentChaser.onSurface) {
-          // Wall/other surface jump - reset streak
-          bunnyHopRef.current.streak = 0;
-          bunnyHopRef.current.speed = 0;
-          setBunnyHopCombo(0);
+          // Wall/ceiling jump - keep bunny hop momentum!
           newChaser.vy = -14;
           newChaser.onSurface = null;
         }
@@ -1287,7 +1284,7 @@ export default function NinjaGame() {
             newChaser.vy = -12;
             newChaser.vx = currentChaser.onSurface === 'left_wall' ? 10 : -10;
             newChaser.onSurface = null;
-            bunnyHopRef.current.streak = 0; // Reset streak on wall jump
+            // Keep bunny hop momentum on wall jump!
           }
         }
 
@@ -1328,11 +1325,19 @@ export default function NinjaGame() {
         }
         if (newChaser.x <= currentSize / 2) {
           newChaser.x = currentSize / 2;
+          // Update lastLandTime when touching wall to keep bunny hop chain
+          if (currentChaser.onSurface !== 'left_wall') {
+            bunnyHopRef.current.lastLandTime = Date.now();
+          }
           newChaser.onSurface = 'left_wall';
           newChaser.vx = 0;
         }
         if (newChaser.x >= GAME_WIDTH - currentSize / 2) {
           newChaser.x = GAME_WIDTH - currentSize / 2;
+          // Update lastLandTime when touching wall to keep bunny hop chain
+          if (currentChaser.onSurface !== 'right_wall') {
+            bunnyHopRef.current.lastLandTime = Date.now();
+          }
           newChaser.onSurface = 'right_wall';
           newChaser.vx = 0;
         }
