@@ -94,7 +94,7 @@ const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurfa
           <circle cx="72" cy="43" r="2" fill="#60a5fa" />
 
           {/* Mouth */}
-          <path d="M 45 56 Q 50 54 55 56" stroke="black" strokeWidth="2" fill="none" />
+          <path d="M 45 61 Q 50 59 55 61" stroke="black" strokeWidth="2" fill="none" />
         </svg>
       </div>
     );
