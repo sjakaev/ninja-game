@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.27";
+const APP_VERSION = "1.7.28";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -387,10 +387,13 @@ export default function NinjaGame() {
     if (gameMode !== 'multi') return;
 
     const newPeer = new Peer({
+      debug: 2, // Show warnings and errors in console
       config: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' }
         ]
       }
     });
@@ -484,10 +487,13 @@ export default function NinjaGame() {
     }
 
     const hostPeer = new Peer(code, {
+      debug: 2, // Show warnings and errors in console
       config: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' }
         ]
       }
     });
