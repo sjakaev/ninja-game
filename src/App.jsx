@@ -1038,7 +1038,7 @@ export default function NinjaGame() {
         const moveSpeed = 0.8;
         if (keys.left) newChaser.vx -= moveSpeed * dt;
         if (keys.right) newChaser.vx += moveSpeed * dt;
-        if (keys.jump && currentChaser.onSurface) {
+        if ((keys.jump || keys.up) && currentChaser.onSurface) {
           newChaser.vy = -14;
           newChaser.onSurface = null;
         }
@@ -1046,7 +1046,7 @@ export default function NinjaGame() {
         // Wall climb
         if (currentChaser.onSurface === 'left_wall' || currentChaser.onSurface === 'right_wall') {
           if (keys.up) newChaser.vy = -6;
-          if (keys.jump) {
+          if (keys.jump || keys.up) {
             newChaser.vy = -12;
             newChaser.vx = currentChaser.onSurface === 'left_wall' ? 10 : -10;
             newChaser.onSurface = null;
@@ -1488,7 +1488,7 @@ export default function NinjaGame() {
         const moveSpeed = 0.8;
         if (keys.left) newChaser.vx -= moveSpeed * dt;
         if (keys.right) newChaser.vx += moveSpeed * dt;
-        if (keys.jump && prev.onSurface) {
+        if ((keys.jump || keys.up) && prev.onSurface) {
           newChaser.vy = -14;
           newChaser.onSurface = null;
         }
@@ -1496,7 +1496,7 @@ export default function NinjaGame() {
         // Wall climb
         if (prev.onSurface === 'left_wall' || prev.onSurface === 'right_wall') {
           if (keys.up) newChaser.vy = -6;
-          if (keys.jump) {
+          if (keys.jump || keys.up) {
             newChaser.vy = -12;
             newChaser.vx = prev.onSurface === 'left_wall' ? 10 : -10;
             newChaser.onSurface = null;
