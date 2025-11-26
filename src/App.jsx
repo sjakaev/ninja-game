@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.31";
+const APP_VERSION = "1.7.32";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -1281,10 +1281,13 @@ export default function NinjaGame() {
         if (currentChaser.onSurface === 'left_wall' || currentChaser.onSurface === 'right_wall') {
           if (keys.up) newChaser.vy = -6;
           if (keys.jump || keys.up) {
-            newChaser.vy = -12;
-            newChaser.vx = currentChaser.onSurface === 'left_wall' ? 10 : -10;
+            // Apply bunny hop bonus to wall jump!
+            const jumpBonus = bunnyHopRef.current.streak * 2;
+            const speedBonus = bunnyHopRef.current.speed * 0.4; // 40% of accumulated horizontal speed
+
+            newChaser.vy = -12 - jumpBonus;
+            newChaser.vx = currentChaser.onSurface === 'left_wall' ? (10 + speedBonus) : -(10 + speedBonus);
             newChaser.onSurface = null;
-            // Keep bunny hop momentum on wall jump!
           }
         }
 
