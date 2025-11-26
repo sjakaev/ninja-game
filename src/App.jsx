@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.24";
+const APP_VERSION = "1.7.25";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -587,11 +587,29 @@ export default function NinjaGame() {
       return;
     }
 
+    if (!peer || !isPeerReady) {
+      alert('Подожди, соединение устанавливается...');
+      return;
+    }
+
     setGameState('client');
 
     const conn = peer.connect(inputRoomCode);
+    let connected = false;
+
+    // Timeout for connection - 10 seconds
+    const timeout = setTimeout(() => {
+      if (!connected) {
+        console.error('Connection timeout');
+        alert('Не удалось подключиться! Время ожидания истекло.');
+        conn.close();
+        setGameState('mode-select');
+      }
+    }, 10000);
 
     conn.on('open', () => {
+      connected = true;
+      clearTimeout(timeout);
       console.log('Connected to host');
       setIsConnected(true);
       setConnection(conn);
@@ -611,6 +629,7 @@ export default function NinjaGame() {
     });
 
     conn.on('error', (err) => {
+      clearTimeout(timeout);
       console.error('Connection error:', err);
       alert('Не удалось подключиться! Проверь код комнаты.');
       setGameState('mode-select');
