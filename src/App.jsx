@@ -286,6 +286,7 @@ export default function NinjaGame() {
   const cursorLinesRef = useRef([]);
   const roleRef = useRef(null);
   const gameOverRef = useRef(false);
+  const bunnyHopRef = useRef({ streak: 0, lastLandTime: 0 }); // Bunny hop momentum
 
   // Dynamic game size for fullscreen
   const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
@@ -1178,9 +1179,34 @@ export default function NinjaGame() {
 
         // Keyboard movement - use ref for instant response
         const moveSpeed = 0.8;
+        const isRunning = keys.left || keys.right;
         if (keys.left) newChaser.vx -= moveSpeed * dt;
         if (keys.right) newChaser.vx += moveSpeed * dt;
-        if ((keys.jump || keys.up) && currentChaser.onSurface) {
+
+        // Bunny hop logic - consecutive jumps without running build momentum
+        if ((keys.jump || keys.up) && currentChaser.onSurface === 'ground') {
+          const now = Date.now();
+          const timeSinceLand = now - bunnyHopRef.current.lastLandTime;
+
+          // If jumped quickly after landing (within 300ms) and not running, increase streak
+          if (timeSinceLand < 300 && !isRunning) {
+            bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 5);
+          } else if (isRunning) {
+            bunnyHopRef.current.streak = 0; // Reset if running
+          }
+
+          // Base jump + bonus from streak (each streak adds 1.5 to jump power)
+          const jumpBonus = bunnyHopRef.current.streak * 1.5;
+          newChaser.vy = -14 - jumpBonus;
+
+          // Also add horizontal momentum from streak
+          const hBonus = bunnyHopRef.current.streak * 2;
+          if (newChaser.vx > 0) newChaser.vx += hBonus;
+          else if (newChaser.vx < 0) newChaser.vx -= hBonus;
+
+          newChaser.onSurface = null;
+        } else if ((keys.jump || keys.up) && currentChaser.onSurface) {
+          // Wall/other surface jump - no bunny hop
           newChaser.vy = -14;
           newChaser.onSurface = null;
         }
@@ -1192,6 +1218,7 @@ export default function NinjaGame() {
             newChaser.vy = -12;
             newChaser.vx = currentChaser.onSurface === 'left_wall' ? 10 : -10;
             newChaser.onSurface = null;
+            bunnyHopRef.current.streak = 0; // Reset streak on wall jump
           }
         }
 
@@ -1211,11 +1238,16 @@ export default function NinjaGame() {
         newChaser.vy *= 0.99;
 
         // Collisions
+        const wasInAir = !currentChaser.onSurface || currentChaser.onSurface === null;
         newChaser.onSurface = null;
         if (newChaser.y >= GAME_HEIGHT - currentSize / 2) {
           newChaser.y = GAME_HEIGHT - currentSize / 2;
           newChaser.vy = 0;
           newChaser.onSurface = 'ground';
+          // Track landing time for bunny hop
+          if (wasInAir) {
+            bunnyHopRef.current.lastLandTime = Date.now();
+          }
         }
         if (newChaser.y <= currentSize / 2) {
           newChaser.y = currentSize / 2;
@@ -1628,9 +1660,35 @@ export default function NinjaGame() {
 
         // Keyboard movement - use ref for instant response
         const moveSpeed = 0.8;
+        const isRunning = keys.left || keys.right;
         if (keys.left) newChaser.vx -= moveSpeed * dt;
         if (keys.right) newChaser.vx += moveSpeed * dt;
-        if ((keys.jump || keys.up) && prev.onSurface) {
+
+        // Bunny hop logic - consecutive jumps without running build momentum
+        if ((keys.jump || keys.up) && prev.onSurface === 'ground') {
+          const now = Date.now();
+          const timeSinceLand = now - bunnyHopRef.current.lastLandTime;
+
+          // If jumped quickly after landing (within 300ms) and not running, increase streak
+          if (timeSinceLand < 300 && !isRunning) {
+            bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 5);
+          } else if (isRunning) {
+            bunnyHopRef.current.streak = 0; // Reset if running
+          }
+
+          // Base jump + bonus from streak (each streak adds 1.5 to jump power)
+          const jumpBonus = bunnyHopRef.current.streak * 1.5;
+          newChaser.vy = -14 - jumpBonus;
+
+          // Also add horizontal momentum from streak
+          const hBonus = bunnyHopRef.current.streak * 2;
+          if (newChaser.vx > 0) newChaser.vx += hBonus;
+          else if (newChaser.vx < 0) newChaser.vx -= hBonus;
+
+          newChaser.onSurface = null;
+        } else if ((keys.jump || keys.up) && prev.onSurface) {
+          // Non-ground surfaces (walls, lines) - normal jump, reset streak
+          bunnyHopRef.current.streak = 0;
           newChaser.vy = -14;
           newChaser.onSurface = null;
         }
@@ -1658,12 +1716,18 @@ export default function NinjaGame() {
         newChaser.vx *= 0.97;
         newChaser.vy *= 0.99;
 
+        // Track if was in air for landing detection
+        const wasInAir = !prev.onSurface || prev.onSurface === null;
         newChaser.onSurface = null;
 
         if (newChaser.y >= GAME_HEIGHT - currentSize / 2) {
           newChaser.y = GAME_HEIGHT - currentSize / 2;
           newChaser.vy = 0;
           newChaser.onSurface = 'ground';
+          // Track landing time for bunny hop
+          if (wasInAir) {
+            bunnyHopRef.current.lastLandTime = Date.now();
+          }
         }
 
         if (newChaser.y <= currentSize / 2) {
