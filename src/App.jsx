@@ -833,13 +833,14 @@ export default function NinjaGame() {
     if (gameMode === 'multi' && role !== 'cursor') return;
 
     const handleMouseMove = (e) => {
-      if (gameAreaRef.current) {
+      // Don't update cursor position after game over
+      if (gameAreaRef.current && !gameOverRef.current) {
         const rect = gameAreaRef.current.getBoundingClientRect();
         let newX = Math.max(0, Math.min(GAME_WIDTH, e.clientX - rect.left));
         let newY = Math.max(0, Math.min(GAME_HEIGHT, e.clientY - rect.top));
 
-        // Apply time scale for single player (only during gameplay)
-        if (!gameOver && gameMode === 'single' && timeScale < 1) {
+        // Apply time scale for single player
+        if (gameMode === 'single' && timeScale < 1) {
           const currentPos = mousePos;
           newX = currentPos.x + (newX - currentPos.x) * timeScale;
           newY = currentPos.y + (newY - currentPos.y) * timeScale;
@@ -847,12 +848,12 @@ export default function NinjaGame() {
 
         setMousePos({ x: newX, y: newY });
         mousePosRef.current = { x: newX, y: newY };
-        if (!gameOver && gameMode === 'multi') {
+        if (gameMode === 'multi') {
           sendData({ type: 'mouseMove', x: newX, y: newY });
         }
 
-        // Draw lines when mouse is pressed (only during gameplay)
-        if (!gameOver && isDrawingRef.current && lastDrawPos.current) {
+        // Draw lines when mouse is pressed
+        if (isDrawingRef.current && lastDrawPos.current) {
           const dx = newX - lastDrawPos.current.x;
           const dy = newY - lastDrawPos.current.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
