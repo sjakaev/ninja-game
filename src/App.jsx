@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.30";
+const APP_VERSION = "1.7.31";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -2604,40 +2604,38 @@ export default function NinjaGame() {
             )}
           </div>
 
-          {/* Abilities panel - bottom (both single and multiplayer ninja) */}
+          {/* Abilities panel - top left next to menu (hidden on mobile) */}
           {(isSinglePlayer || role === 'ninja') && (
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-              <div className="flex gap-2">
-                {abilityKeys.map((key, i) => {
-                  const ability = abilitiesFull[key];
-                  const cooldownEnd = abilityCooldowns[key] || 0;
-                  const isOnCooldown = Date.now() < cooldownEnd;
-                  const cooldownPercent = isOnCooldown
-                    ? ((cooldownEnd - Date.now()) / ability.cooldown) * 100
-                    : 0;
-                  return (
-                    <div
-                      key={key}
-                      className={`relative ${ability.color} text-white w-12 h-12 rounded-lg flex flex-col items-center justify-center transition-all ${
-                        currentAbility === key ? 'ring-2 ring-white scale-125 shadow-lg' : isOnCooldown ? 'opacity-40' : 'opacity-70'
-                      }`}
-                      style={{
-                        boxShadow: currentAbility === key ? `0 0 20px ${ability.color === 'bg-blue-500' ? '#3b82f6' : '#ef4444'}` : 'none'
-                      }}
-                      title={ability.name}
-                    >
-                      <span className="text-lg">{ability.emoji}</span>
-                      <span className="text-xs opacity-80">{i + 1}</span>
-                      {isOnCooldown && (
-                        <div
-                          className="absolute bottom-0 left-0 right-0 bg-black/50 rounded-b-lg"
-                          style={{ height: `${cooldownPercent}%` }}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="absolute top-4 left-24 z-50 hidden md:flex gap-2">
+              {abilityKeys.map((key, i) => {
+                const ability = abilitiesFull[key];
+                const cooldownEnd = abilityCooldowns[key] || 0;
+                const isOnCooldown = Date.now() < cooldownEnd;
+                const cooldownPercent = isOnCooldown
+                  ? ((cooldownEnd - Date.now()) / ability.cooldown) * 100
+                  : 0;
+                return (
+                  <div
+                    key={key}
+                    className={`relative ${ability.color} text-white w-12 h-12 rounded-lg flex flex-col items-center justify-center transition-all ${
+                      currentAbility === key ? 'ring-2 ring-white scale-125 shadow-lg' : isOnCooldown ? 'opacity-40' : 'opacity-70'
+                    }`}
+                    style={{
+                      boxShadow: currentAbility === key ? `0 0 20px ${ability.color === 'bg-blue-500' ? '#3b82f6' : '#ef4444'}` : 'none'
+                    }}
+                    title={ability.name}
+                  >
+                    <span className="text-lg">{ability.emoji}</span>
+                    <span className="text-xs opacity-80">{i + 1}</span>
+                    {isOnCooldown && (
+                      <div
+                        className="absolute bottom-0 left-0 right-0 bg-black/50 rounded-b-lg"
+                        style={{ height: `${cooldownPercent}%` }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
       </div>
