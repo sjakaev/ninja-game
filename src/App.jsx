@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.23";
+const APP_VERSION = "1.7.24";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -2641,8 +2641,8 @@ export default function NinjaGame() {
             )}
           </div>
 
-          {/* Abilities panel - bottom */}
-          {isSinglePlayer && (
+          {/* Abilities panel - bottom (both single and multiplayer ninja) */}
+          {(isSinglePlayer || role === 'ninja') && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50">
               <div className="flex gap-2">
                 {abilityKeys.map((key, i) => {
@@ -2675,13 +2675,6 @@ export default function NinjaGame() {
                   );
                 })}
               </div>
-            </div>
-          )}
-
-          {/* Multiplayer controls hint */}
-          {!isSinglePlayer && role === 'ninja' && (
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50 bg-black/70 backdrop-blur-sm px-6 py-2 rounded-full text-white text-sm">
-              ⌨️ SPACE - Прыжок | E - Рывок | Q - Телепорт
             </div>
           )}
       </div>
