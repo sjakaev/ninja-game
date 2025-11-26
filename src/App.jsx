@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.16";
+const APP_VERSION = "1.7.17";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -2266,7 +2266,7 @@ export default function NinjaGame() {
         {/* Game Area - Fullscreen */}
         <div
           ref={gameAreaRef}
-          className="relative w-full h-full overflow-hidden cursor-none"
+          className={`relative w-full h-full cursor-none ${gameOver ? '' : 'overflow-hidden'}`}
           style={{
             background: 'linear-gradient(to bottom, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
             filter: timeScale < 1 ? 'hue-rotate(30deg) saturate(1.5)' : 'none'
@@ -2446,7 +2446,17 @@ export default function NinjaGame() {
 
             {/* Game Over */}
             {gameOver && (
-              <div className="absolute inset-0 bg-black bg-opacity-85 flex items-center justify-center z-40">
+              <div
+                className="absolute inset-0 bg-black bg-opacity-85 flex items-center justify-center z-40"
+                onMouseMove={(e) => {
+                  if (gameAreaRef.current) {
+                    const rect = gameAreaRef.current.getBoundingClientRect();
+                    const newX = Math.max(0, Math.min(GAME_WIDTH, e.clientX - rect.left));
+                    const newY = Math.max(0, Math.min(GAME_HEIGHT, e.clientY - rect.top));
+                    setMousePos({ x: newX, y: newY });
+                  }
+                }}
+              >
                 <div className="bg-gradient-to-br from-red-900 via-red-800 to-red-900 rounded-3xl p-10 text-center border-4 border-red-600">
                   <div className="text-8xl mb-6">
                     {isSinglePlayer ? '🥷' : (role === 'ninja' ? '🎉' : '💀')}
