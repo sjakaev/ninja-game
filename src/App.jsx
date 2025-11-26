@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.12";
+const APP_VERSION = "1.7.13";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -266,6 +266,7 @@ export default function NinjaGame() {
   const [abilityCooldowns, setAbilityCooldowns] = useState({});
   const [keysPressed, setKeysPressed] = useState({});
   const [isCrouching, setIsCrouching] = useState(false); // Is ninja crouching (down key)
+  const [bunnyHopCombo, setBunnyHopCombo] = useState(0); // Visual combo indicator
   const [cursorLines, setCursorLines] = useState([]); // Physical lines drawn by cursor
   const [isDrawing, setIsDrawing] = useState(false); // Is mouse button pressed
   const [linkCopied, setLinkCopied] = useState(false); // Show "link copied" message
@@ -1192,8 +1193,10 @@ export default function NinjaGame() {
           // Running resets streak
           if (isRunning) {
             bunnyHopRef.current.streak = 0; // Reset if running
+            setBunnyHopCombo(0);
           } else if (timeSinceLand < 500 && bunnyHopRef.current.lastLandTime > 0) {
             bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 5);
+            setBunnyHopCombo(bunnyHopRef.current.streak);
           }
           // First jump doesn't add streak but doesn't reset either
 
@@ -1209,6 +1212,8 @@ export default function NinjaGame() {
           newChaser.onSurface = null;
         } else if ((keys.jump || keys.up) && currentChaser.onSurface) {
           // Wall/other surface jump - no bunny hop
+          bunnyHopRef.current.streak = 0;
+          setBunnyHopCombo(0);
           newChaser.vy = -14;
           newChaser.onSurface = null;
         }
@@ -2188,6 +2193,11 @@ export default function NinjaGame() {
           <div className="bg-black/80 border border-yellow-500 px-4 py-1.5 rounded-full text-white font-bold text-lg">
             ⭐ {score}
           </div>
+          {bunnyHopCombo > 0 && (role === 'ninja' || isSinglePlayer) && (
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 px-3 py-1.5 rounded-full text-white font-bold text-sm animate-pulse">
+              🔥 COMBO x{bunnyHopCombo}
+            </div>
+          )}
           {currentAbility && (
             <div className={`${abilitiesFull[currentAbility]?.color || 'bg-red-500'} px-3 py-1.5 rounded-full text-white font-bold text-sm`}>
               {abilitiesFull[currentAbility]?.emoji} {abilitiesFull[currentAbility]?.name}
