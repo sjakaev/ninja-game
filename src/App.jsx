@@ -285,6 +285,7 @@ export default function NinjaGame() {
   const scoreRef = useRef(0);
   const cursorLinesRef = useRef([]);
   const roleRef = useRef(null);
+  const gameOverRef = useRef(false);
 
   // Dynamic game size for fullscreen
   const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
