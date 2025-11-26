@@ -73,11 +73,9 @@ const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurfa
           {/* Big squished head */}
           <ellipse cx="50" cy="52" rx="20" ry="14" fill={headColor} stroke="#92400e" strokeWidth="2" />
 
-          {/* Headband */}
-          <ellipse cx="50" cy="50" rx="20" ry="4" fill={bodyColor} />
-          {/* Headband tails drooping */}
-          <path d="M 70 50 Q 78 55 75 62" stroke={bodyColor} strokeWidth="4" fill="none" strokeLinecap="round" />
-          <path d="M 70 50 Q 82 52 80 58" stroke={bodyColor} strokeWidth="3" fill="none" strokeLinecap="round" />
+          {/* Headband - same as standing */}
+          <rect x="30" y="48" width="40" height="6" fill={bodyColor} />
+          <rect x="70" y="47" width="10" height="4" rx="2" fill={bodyColor} />
 
           {/* Big worried eyes that follow cursor */}
           <ellipse cx="42" cy="48" rx="6" ry="7" fill="white" />
