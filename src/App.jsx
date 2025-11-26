@@ -1907,8 +1907,8 @@ export default function NinjaGame() {
           )}
         </div>
 
-        {/* Ability bar for ninja */}
-        {role === 'ninja' && (
+        {/* Ability bar for ninja (multiplayer only) */}
+        {role === 'ninja' && !isSinglePlayer && (
           <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-1">
             {abilityKeys.map((abilityName, i) => {
               const ability = abilitiesFull[abilityName];
