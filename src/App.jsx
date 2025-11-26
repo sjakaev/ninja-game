@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.19";
+const APP_VERSION = "1.7.20";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -939,12 +939,16 @@ export default function NinjaGame() {
           const abilityName = abilityKeys[keyNum];
           const ability = abilitiesFull[abilityName];
           const cooldownEnd = abilityCooldowns[abilityName] || 0;
-          if (Date.now() >= cooldownEnd) {
+          const now = Date.now();
+          // Can use ability if: fully off cooldown OR at least half cooldown passed
+          const cooldownRemaining = cooldownEnd - now;
+          const canUse = cooldownRemaining <= ability.cooldown / 2;
+          if (canUse) {
             setCurrentAbility(abilityName);
             setAbilityTimer(ability.duration);
             setAbilityCooldowns(prev => ({
               ...prev,
-              [abilityName]: Date.now() + ability.cooldown
+              [abilityName]: now + ability.cooldown
             }));
           }
         }
@@ -1009,14 +1013,18 @@ export default function NinjaGame() {
           const abilityName = abilityKeys[keyNum];
           const ability = abilitiesFull[abilityName];
           const cooldownEnd = abilityCooldowns[abilityName] || 0;
-          if (Date.now() >= cooldownEnd) {
+          const now = Date.now();
+          // Can use ability if: fully off cooldown OR at least half cooldown passed
+          const cooldownRemaining = cooldownEnd - now;
+          const canUse = cooldownRemaining <= ability.cooldown / 2;
+          if (canUse) {
             currentAbilityRef.current = abilityName;
             abilityTimerRef.current = ability.duration;
             setCurrentAbility(abilityName);
             setAbilityTimer(ability.duration);
             setAbilityCooldowns(prev => ({
               ...prev,
-              [abilityName]: Date.now() + ability.cooldown
+              [abilityName]: now + ability.cooldown
             }));
             sendData({ type: 'ability', ability: abilityName });
           }
