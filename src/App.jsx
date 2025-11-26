@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.7.6";
+const APP_VERSION = "1.7.7";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -758,7 +758,8 @@ export default function NinjaGame() {
     };
 
     const handleMouseDown = (e) => {
-      if (gameAreaRef.current && !gameOver) {
+      // Only cursor can draw lines, not ninja
+      if (gameAreaRef.current && !gameOver && role !== 'ninja') {
         const rect = gameAreaRef.current.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
