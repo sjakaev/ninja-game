@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.6.1";
+const APP_VERSION = "1.6.3";
 
 // Simplified Ninja Character - smoother animations
 const AnimatedChaser = ({ x, y, size, opacity, ability, isClone, vx, vy, onSurface, animTime }) => {
@@ -372,6 +372,7 @@ export default function NinjaGame() {
         break;
       case 'mouseMove':
         if (role === 'ninja') {
+          mousePosRef.current = { x: data.x, y: data.y };
           setMousePos({ x: data.x, y: data.y });
         }
         break;
@@ -419,6 +420,15 @@ export default function NinjaGame() {
     setClones([]);
     setShockwaves([]);
     setParticles([]);
+    setTrails([]);
+    // Reset positions
+    const initialChaser = { x: 450, y: 550, vx: 0, vy: 0, onSurface: 'ground', rotation: 0, scale: 1 };
+    const initialMouse = { x: 450, y: 300 };
+    setChaser(initialChaser);
+    setMousePos(initialMouse);
+    chaserRef.current = initialChaser;
+    mousePosRef.current = initialMouse;
+    lastTime.current = Date.now();
     if (connRef.current) {
       connRef.current.send({ type: 'selectRole', role: selectedRole });
     }
@@ -1104,10 +1114,13 @@ export default function NinjaGame() {
       // Update animation time
       setAnimTime(prev => prev + deltaTime * 16);
 
+      // Use ref for mouse position to avoid stale closures
+      const currentMouse = mousePosRef.current;
+
       setChaser(prev => {
         let newChaser = { ...prev };
-        const dx = mousePos.x - prev.x;
-        const dy = mousePos.y - prev.y;
+        const dx = currentMouse.x - prev.x;
+        const dy = currentMouse.y - prev.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
 
@@ -1181,12 +1194,13 @@ export default function NinjaGame() {
             case 'VORTEX':
             case 'MAGNET':
               const pullForce = currentAbility === 'VORTEX' ? 3 : 2;
-              const pullX = (prev.x - mousePos.x) / Math.max(distance, 1) * pullForce * dt;
-              const pullY = (prev.y - mousePos.y) / Math.max(distance, 1) * pullForce * dt;
-              setMousePos(m => ({
-                x: Math.max(CURSOR_SIZE, Math.min(GAME_WIDTH - CURSOR_SIZE, m.x + pullX)),
-                y: Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, m.y + pullY))
-              }));
+              const pullX = (prev.x - currentMouse.x) / Math.max(distance, 1) * pullForce * dt;
+              const pullY = (prev.y - currentMouse.y) / Math.max(distance, 1) * pullForce * dt;
+              mousePosRef.current = {
+                x: Math.max(CURSOR_SIZE, Math.min(GAME_WIDTH - CURSOR_SIZE, currentMouse.x + pullX)),
+                y: Math.max(CURSOR_SIZE, Math.min(GAME_HEIGHT - CURSOR_SIZE, currentMouse.y + pullY))
+              };
+              setMousePos(mousePosRef.current);
               sendData({ type: 'pullCursor', pullX, pullY });
               break;
             case 'TIME_SLOW':
@@ -1256,7 +1270,7 @@ export default function NinjaGame() {
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [gameState, role, gameMode, mousePos, gameOver, currentAbility, abilityTimer, score, timeScale]);
+  }, [gameState, role, gameMode, gameOver, currentAbility, abilityTimer, score, timeScale]);
 
   // Ability timer (works for both single and multiplayer)
   useEffect(() => {
