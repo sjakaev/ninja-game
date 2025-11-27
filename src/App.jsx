@@ -1341,7 +1341,7 @@ export default function NinjaGame() {
           if (timeSinceLand < 400 && bunnyHopRef.current.lastLandTime > 0) {
             bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 10);
             // Accumulate speed - don't reset, just add more!
-            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 4, 50);
+            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 2, 50);
           } else {
             // Too slow - reset
             bunnyHopRef.current.streak = 0;
@@ -1844,7 +1844,7 @@ export default function NinjaGame() {
           if (timeSinceLand < 400 && bunnyHopRef.current.lastLandTime > 0) {
             bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 10);
             // Accumulate speed - don't reset, just add more!
-            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 4, 50);
+            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 2, 50);
           } else {
             // Too slow - reset
             bunnyHopRef.current.streak = 0;
