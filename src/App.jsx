@@ -1348,7 +1348,7 @@ export default function NinjaGame() {
           if (timeSinceLand < 400 && bunnyHopRef.current.lastLandTime > 0) {
             bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 10);
             // Accumulate speed - don't reset, just add more!
-            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 2, 50);
+            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 1, 20);
           } else {
             // Too slow - reset
             bunnyHopRef.current.streak = 0;
@@ -1357,7 +1357,7 @@ export default function NinjaGame() {
           setBunnyHopCombo(bunnyHopRef.current.streak);
 
           // Base jump + bonus from streak
-          const jumpBonus = bunnyHopRef.current.streak * 2;
+          const jumpBonus = bunnyHopRef.current.streak * 0.5;
           newChaser.vy = -14 - jumpBonus;
 
           // Apply accumulated speed in movement direction
@@ -1377,7 +1377,7 @@ export default function NinjaGame() {
           if (keys.up) newChaser.vy = -6;
           if (keys.jump || keys.up) {
             // Apply bunny hop bonus to wall jump!
-            const jumpBonus = bunnyHopRef.current.streak * 2;
+            const jumpBonus = bunnyHopRef.current.streak * 0.5;
             const speedBonus = bunnyHopRef.current.speed * 0.4; // 40% of accumulated horizontal speed
 
             newChaser.vy = -12 - jumpBonus;
@@ -1851,7 +1851,7 @@ export default function NinjaGame() {
           if (timeSinceLand < 400 && bunnyHopRef.current.lastLandTime > 0) {
             bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 10);
             // Accumulate speed - don't reset, just add more!
-            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 2, 50);
+            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 1, 20);
           } else {
             // Too slow - reset
             bunnyHopRef.current.streak = 0;
@@ -1860,7 +1860,7 @@ export default function NinjaGame() {
           setBunnyHopCombo(bunnyHopRef.current.streak);
 
           // Base jump + bonus from streak
-          const jumpBonus = bunnyHopRef.current.streak * 2;
+          const jumpBonus = bunnyHopRef.current.streak * 0.5;
           newChaser.vy = -14 - jumpBonus;
 
           // Apply accumulated speed in movement direction
