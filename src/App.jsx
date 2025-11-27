@@ -1335,7 +1335,7 @@ export default function NinjaGame() {
 
         // Keyboard movement with acceleration - starts slow, speeds up over time
         const currentSpeed = Math.abs(newChaser.vx);
-        const baseAccel = 0.5;
+        const baseAccel = 0.6;
         const maxSpeed = 12;
         // Acceleration decreases as we approach max speed (creates smooth ramp-up)
         const accelMultiplier = 1 - (currentSpeed / maxSpeed) * 0.7;
@@ -1834,7 +1834,7 @@ export default function NinjaGame() {
 
         // Keyboard movement with acceleration - starts slow, speeds up over time
         const currentSpeed = Math.abs(newChaser.vx);
-        const baseAccel = 0.5;
+        const baseAccel = 0.6;
         const maxSpeed = 12;
         const accelMultiplier = 1 - (currentSpeed / maxSpeed) * 0.7;
         const moveSpeed = baseAccel * Math.max(0.3, accelMultiplier);
