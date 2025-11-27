@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.8.3";
+const APP_VERSION = "1.8.4";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
