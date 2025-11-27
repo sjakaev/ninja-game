@@ -427,20 +427,35 @@ export default function NinjaGame() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
+  // ICE servers config for WebRTC (STUN + TURN for NAT traversal)
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.relay.metered.ca:80' },
+    {
+      urls: 'turn:global.relay.metered.ca:80',
+      username: 'e8dd65b92f6799b2b8d0b994',
+      credential: 'uUvwbnxPCXb/KPRi'
+    },
+    {
+      urls: 'turn:global.relay.metered.ca:443',
+      username: 'e8dd65b92f6799b2b8d0b994',
+      credential: 'uUvwbnxPCXb/KPRi'
+    },
+    {
+      urls: 'turn:global.relay.metered.ca:443?transport=tcp',
+      username: 'e8dd65b92f6799b2b8d0b994',
+      credential: 'uUvwbnxPCXb/KPRi'
+    }
+  ];
+
   // Initialize PeerJS for multiplayer
   useEffect(() => {
     if (gameMode !== 'multi') return;
 
     const newPeer = new Peer({
-      debug: 2, // Show warnings and errors in console
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' }
-        ]
-      }
+      debug: 2,
+      config: { iceServers }
     });
 
     newPeer.on('open', (id) => {
@@ -526,7 +541,7 @@ export default function NinjaGame() {
         });
 
         setConnection(conn);
-      }, 500);
+      }, 1500); // Longer delay to ensure host is registered
 
       return () => clearTimeout(timer);
     }
@@ -582,15 +597,8 @@ export default function NinjaGame() {
     }
 
     const hostPeer = new Peer(code, {
-      debug: 2, // Show warnings and errors in console
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' }
-        ]
-      }
+      debug: 2,
+      config: { iceServers }
     });
 
     // Timeout for host peer creation - 10 seconds
