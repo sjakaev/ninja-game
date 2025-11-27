@@ -488,33 +488,47 @@ export default function NinjaGame() {
   }, [gameState]);
 
   // Auto-connect when we have peer and join code from URL
+  const connectRetryRef = useRef(0);
+
   useEffect(() => {
     if (peer && inputRoomCode && gameMode === 'multi' && gameState === 'menu' && !autoJoinAttemptedRef.current) {
-      autoJoinAttemptedRef.current = true; // Prevent double connection attempts
-      // Small delay to ensure peer is ready
-      const timer = setTimeout(() => {
+      autoJoinAttemptedRef.current = true;
+      connectRetryRef.current = 0;
+
+      const tryConnect = () => {
         if (!playerName.trim()) {
           setPlayerName('Игрок');
         }
         setGameState('client');
 
-        const conn = peer.connect(inputRoomCode);
+        console.log(`Attempting to connect to ${inputRoomCode} (attempt ${connectRetryRef.current + 1}/3)`);
+        const conn = peer.connect(inputRoomCode, { reliable: true });
         let connected = false;
 
         const timeout = setTimeout(() => {
           if (!connected) {
             console.error('Connection timeout');
-            alert('Не удалось подключиться! Время ожидания истекло.');
             conn.close();
-            setGameState('menu');
-            setInputRoomCode('');
+
+            // Retry up to 3 times
+            connectRetryRef.current++;
+            if (connectRetryRef.current < 3) {
+              console.log('Retrying connection...');
+              setGameState('menu');
+              setTimeout(tryConnect, 2000);
+            } else {
+              alert('Не удалось подключиться! Время ожидания истекло.');
+              setGameState('menu');
+              setInputRoomCode('');
+              autoJoinAttemptedRef.current = false;
+            }
           }
-        }, 10000);
+        }, 8000);
 
         conn.on('open', () => {
           connected = true;
           clearTimeout(timeout);
-          console.log('Connected to host');
+          console.log('Connected to host!');
           setIsConnected(true);
           setConnection(conn);
           connRef.current = conn;
@@ -535,14 +549,26 @@ export default function NinjaGame() {
         conn.on('error', (err) => {
           clearTimeout(timeout);
           console.error('Connection error:', err);
-          alert('Не удалось подключиться! Комната не найдена.');
-          setGameState('menu');
-          setInputRoomCode('');
+
+          // Retry on error
+          connectRetryRef.current++;
+          if (connectRetryRef.current < 3) {
+            console.log('Retrying after error...');
+            setGameState('menu');
+            setTimeout(tryConnect, 2000);
+          } else {
+            alert('Не удалось подключиться! Комната не найдена.');
+            setGameState('menu');
+            setInputRoomCode('');
+            autoJoinAttemptedRef.current = false;
+          }
         });
 
         setConnection(conn);
-      }, 1500); // Longer delay to ensure host is registered
+      };
 
+      // Initial delay before first connection attempt
+      const timer = setTimeout(tryConnect, 1500);
       return () => clearTimeout(timer);
     }
   }, [peer, inputRoomCode, gameMode, gameState, playerName]);
