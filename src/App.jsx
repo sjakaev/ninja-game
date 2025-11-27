@@ -1347,8 +1347,9 @@ export default function NinjaGame() {
         newChaser.x += newChaser.vx * dt;
         newChaser.y += newChaser.vy * dt;
 
-        // Friction
-        newChaser.vx *= 0.92;
+        // Friction - less in air to preserve bunny hop momentum
+        const airborne = newChaser.onSurface === null;
+        newChaser.vx *= airborne ? 0.99 : 0.92;
         newChaser.vy *= 0.99;
 
         // Collisions
