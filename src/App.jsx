@@ -476,11 +476,54 @@ export default function NinjaGame() {
 
   // Auto-connect when peer is ready and we have pending auto-join
   useEffect(() => {
-    if (pendingAutoJoin && isPeerReady && peer && inputRoomCode) {
+    if (pendingAutoJoin && isPeerReady && peer && inputRoomCode && playerName) {
       setPendingAutoJoin(false); // Clear flag
-      joinGame(); // Use the same join function
+      // Call joinGame logic directly to avoid stale closure issues
+      setGameState('client');
+
+      const conn = peer.connect(inputRoomCode);
+      let connected = false;
+
+      const timeout = setTimeout(() => {
+        if (!connected) {
+          console.error('Connection timeout');
+          alert('Не удалось подключиться! Время ожидания истекло.');
+          conn.close();
+          setGameState('mode-select');
+        }
+      }, 10000);
+
+      conn.on('open', () => {
+        connected = true;
+        clearTimeout(timeout);
+        console.log('Connected to host');
+        setIsConnected(true);
+        setConnection(conn);
+        connRef.current = conn;
+
+        conn.send({ type: 'join', playerName });
+
+        conn.on('data', (data) => {
+          handleReceivedData(data);
+        });
+
+        conn.on('close', () => {
+          setIsConnected(false);
+          alert('Соединение потеряно!');
+          resetToMenu();
+        });
+      });
+
+      conn.on('error', (err) => {
+        clearTimeout(timeout);
+        console.error('Connection error:', err);
+        alert('Не удалось подключиться! Проверь код комнаты.');
+        setGameState('mode-select');
+      });
+
+      setConnection(conn);
     }
-  }, [pendingAutoJoin, isPeerReady, peer, inputRoomCode]);
+  }, [pendingAutoJoin, isPeerReady, peer, inputRoomCode, playerName]);
 
   // Particles
   const createParticles = useCallback((x, y, color, count = 15) => {
