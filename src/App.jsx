@@ -1333,13 +1333,18 @@ export default function NinjaGame() {
           setTimeScale(1);
         }
 
-        // Keyboard movement - use ref for instant response
-        const moveSpeed = 0.4;
-        const isRunning = keys.left || keys.right;
+        // Keyboard movement with acceleration - starts slow, speeds up over time
+        const currentSpeed = Math.abs(newChaser.vx);
+        const baseAccel = 0.5;
+        const maxSpeed = 12;
+        // Acceleration decreases as we approach max speed (creates smooth ramp-up)
+        const accelMultiplier = 1 - (currentSpeed / maxSpeed) * 0.7;
+        const moveSpeed = baseAccel * Math.max(0.3, accelMultiplier);
+
         if (keys.left) newChaser.vx -= moveSpeed * dt;
         if (keys.right) newChaser.vx += moveSpeed * dt;
 
-        // Bunny hop logic - consecutive quick jumps build momentum
+        // Bunny hop logic - consecutive quick jumps build jump height (no speed bonus)
         if ((keys.jump || keys.up) && currentChaser.onSurface === 'ground') {
           const now = Date.now();
           const timeSinceLand = now - bunnyHopRef.current.lastLandTime;
@@ -1347,23 +1352,16 @@ export default function NinjaGame() {
           // If jumped quickly after landing (within 400ms), increase streak
           if (timeSinceLand < 400 && bunnyHopRef.current.lastLandTime > 0) {
             bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 10);
-            // Accumulate speed - don't reset, just add more!
-            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 1, 20);
           } else {
             // Too slow - reset
             bunnyHopRef.current.streak = 0;
-            bunnyHopRef.current.speed = 0;
           }
+          bunnyHopRef.current.speed = 0; // No speed bonus from bunny hop
           setBunnyHopCombo(bunnyHopRef.current.streak);
 
           // Base jump + bonus from streak
           const jumpBonus = bunnyHopRef.current.streak * 1.5;
           newChaser.vy = -14 - jumpBonus;
-
-          // Apply accumulated speed in movement direction
-          const speed = bunnyHopRef.current.speed;
-          if (keys.right) newChaser.vx = Math.max(newChaser.vx, speed);
-          else if (keys.left) newChaser.vx = Math.min(newChaser.vx, -speed);
 
           newChaser.onSurface = null;
         } else if ((keys.jump || keys.up) && currentChaser.onSurface) {
@@ -1376,12 +1374,10 @@ export default function NinjaGame() {
         if (currentChaser.onSurface === 'left_wall' || currentChaser.onSurface === 'right_wall') {
           if (keys.up) newChaser.vy = -6;
           if (keys.jump || keys.up) {
-            // Apply bunny hop bonus to wall jump!
+            // Apply bunny hop jump bonus to wall jump
             const jumpBonus = bunnyHopRef.current.streak * 1.5;
-            const speedBonus = bunnyHopRef.current.speed * 0.4; // 40% of accumulated horizontal speed
-
             newChaser.vy = -12 - jumpBonus;
-            newChaser.vx = currentChaser.onSurface === 'left_wall' ? (10 + speedBonus) : -(10 + speedBonus);
+            newChaser.vx = currentChaser.onSurface === 'left_wall' ? 10 : -10;
             newChaser.onSurface = null;
           }
         }
@@ -1836,13 +1832,17 @@ export default function NinjaGame() {
           }
         }
 
-        // Keyboard movement - use ref for instant response
-        const moveSpeed = 0.4;
-        const isRunning = keys.left || keys.right;
+        // Keyboard movement with acceleration - starts slow, speeds up over time
+        const currentSpeed = Math.abs(newChaser.vx);
+        const baseAccel = 0.5;
+        const maxSpeed = 12;
+        const accelMultiplier = 1 - (currentSpeed / maxSpeed) * 0.7;
+        const moveSpeed = baseAccel * Math.max(0.3, accelMultiplier);
+
         if (keys.left) newChaser.vx -= moveSpeed * dt;
         if (keys.right) newChaser.vx += moveSpeed * dt;
 
-        // Bunny hop logic - consecutive quick jumps build momentum
+        // Bunny hop logic - consecutive quick jumps build jump height (no speed bonus)
         if ((keys.jump || keys.up) && prev.onSurface === 'ground') {
           const now = Date.now();
           const timeSinceLand = now - bunnyHopRef.current.lastLandTime;
@@ -1850,23 +1850,16 @@ export default function NinjaGame() {
           // If jumped quickly after landing (within 400ms), increase streak
           if (timeSinceLand < 400 && bunnyHopRef.current.lastLandTime > 0) {
             bunnyHopRef.current.streak = Math.min(bunnyHopRef.current.streak + 1, 10);
-            // Accumulate speed - don't reset, just add more!
-            bunnyHopRef.current.speed = Math.min(bunnyHopRef.current.speed + 1, 20);
           } else {
             // Too slow - reset
             bunnyHopRef.current.streak = 0;
-            bunnyHopRef.current.speed = 0;
           }
+          bunnyHopRef.current.speed = 0; // No speed bonus from bunny hop
           setBunnyHopCombo(bunnyHopRef.current.streak);
 
           // Base jump + bonus from streak
           const jumpBonus = bunnyHopRef.current.streak * 1.5;
           newChaser.vy = -14 - jumpBonus;
-
-          // Apply accumulated speed in movement direction
-          const speed = bunnyHopRef.current.speed;
-          if (keys.right) newChaser.vx = Math.max(newChaser.vx, speed);
-          else if (keys.left) newChaser.vx = Math.min(newChaser.vx, -speed);
 
           newChaser.onSurface = null;
         } else if ((keys.jump || keys.up) && prev.onSurface) {
