@@ -335,6 +335,7 @@ export default function NinjaGame() {
   const bunnyHopRef = useRef({ streak: 0, lastLandTime: 0, speed: 0 }); // Bunny hop momentum
   const lastSendTimeRef = useRef(0); // Throttle network sends
   const targetPosRef = useRef(null); // Target position for interpolation
+  const autoJoinAttemptedRef = useRef(false); // Prevent double auto-join
 
   // Dynamic game size for fullscreen
   const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
@@ -473,7 +474,8 @@ export default function NinjaGame() {
 
   // Auto-connect when we have peer and join code from URL
   useEffect(() => {
-    if (peer && inputRoomCode && gameMode === 'multi' && gameState === 'menu') {
+    if (peer && inputRoomCode && gameMode === 'multi' && gameState === 'menu' && !autoJoinAttemptedRef.current) {
+      autoJoinAttemptedRef.current = true; // Prevent double connection attempts
       // Small delay to ensure peer is ready
       const timer = setTimeout(() => {
         if (!playerName.trim()) {
