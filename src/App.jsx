@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const APP_VERSION = "1.8.1";
+const APP_VERSION = "1.8.2";
 
 // Get join code from URL if present
 const getJoinCodeFromURL = () => {
@@ -281,7 +281,6 @@ export default function NinjaGame() {
   const [inputRoomCode, setInputRoomCode] = useState('');
   const [peer, setPeer] = useState(null);
   const [isPeerReady, setIsPeerReady] = useState(false);
-  const [pendingAutoJoin, setPendingAutoJoin] = useState(false); // Flag for URL auto-join
   const [connection, setConnection] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [opponentName, setOpponentName] = useState('');
@@ -461,69 +460,75 @@ export default function NinjaGame() {
     };
   }, [gameMode]);
 
-  // Auto-fill room code from URL and set flag for auto-join
+  // Auto-join from URL
   useEffect(() => {
     const joinCode = getJoinCodeFromURL();
     if (joinCode && gameState === 'menu') {
       setInputRoomCode(joinCode);
       setGameMode('multi');
-      setPlayerName('Игрок'); // Set default name for URL joins
-      setPendingAutoJoin(true); // Will auto-join when peer is ready
       // Clear URL params
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [gameState]);
 
-  // Auto-connect when peer is ready and we have pending auto-join
+  // Auto-connect when we have peer and join code from URL
   useEffect(() => {
-    if (pendingAutoJoin && isPeerReady && peer && inputRoomCode && playerName) {
-      setPendingAutoJoin(false); // Clear flag
-      // Call joinGame logic directly to avoid stale closure issues
-      setGameState('client');
-
-      const conn = peer.connect(inputRoomCode);
-      let connected = false;
-
-      const timeout = setTimeout(() => {
-        if (!connected) {
-          console.error('Connection timeout');
-          alert('Не удалось подключиться! Время ожидания истекло.');
-          conn.close();
-          setGameState('mode-select');
+    if (peer && inputRoomCode && gameMode === 'multi' && gameState === 'menu') {
+      // Small delay to ensure peer is ready
+      const timer = setTimeout(() => {
+        if (!playerName.trim()) {
+          setPlayerName('Игрок');
         }
-      }, 10000);
+        setGameState('client');
 
-      conn.on('open', () => {
-        connected = true;
-        clearTimeout(timeout);
-        console.log('Connected to host');
-        setIsConnected(true);
+        const conn = peer.connect(inputRoomCode);
+        let connected = false;
+
+        const timeout = setTimeout(() => {
+          if (!connected) {
+            console.error('Connection timeout');
+            alert('Не удалось подключиться! Время ожидания истекло.');
+            conn.close();
+            setGameState('menu');
+            setInputRoomCode('');
+          }
+        }, 10000);
+
+        conn.on('open', () => {
+          connected = true;
+          clearTimeout(timeout);
+          console.log('Connected to host');
+          setIsConnected(true);
+          setConnection(conn);
+          connRef.current = conn;
+
+          conn.send({ type: 'join', playerName: playerName || 'Игрок' });
+
+          conn.on('data', (data) => {
+            handleReceivedData(data);
+          });
+
+          conn.on('close', () => {
+            setIsConnected(false);
+            alert('Соединение потеряно!');
+            resetToMenu();
+          });
+        });
+
+        conn.on('error', (err) => {
+          clearTimeout(timeout);
+          console.error('Connection error:', err);
+          alert('Не удалось подключиться! Комната не найдена.');
+          setGameState('menu');
+          setInputRoomCode('');
+        });
+
         setConnection(conn);
-        connRef.current = conn;
+      }, 500);
 
-        conn.send({ type: 'join', playerName });
-
-        conn.on('data', (data) => {
-          handleReceivedData(data);
-        });
-
-        conn.on('close', () => {
-          setIsConnected(false);
-          alert('Соединение потеряно!');
-          resetToMenu();
-        });
-      });
-
-      conn.on('error', (err) => {
-        clearTimeout(timeout);
-        console.error('Connection error:', err);
-        alert('Не удалось подключиться! Проверь код комнаты.');
-        setGameState('mode-select');
-      });
-
-      setConnection(conn);
+      return () => clearTimeout(timer);
     }
-  }, [pendingAutoJoin, isPeerReady, peer, inputRoomCode, playerName]);
+  }, [peer, inputRoomCode, gameMode, gameState, playerName]);
 
   // Particles
   const createParticles = useCallback((x, y, color, count = 15) => {
