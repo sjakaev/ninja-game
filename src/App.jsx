@@ -1357,7 +1357,7 @@ export default function NinjaGame() {
           setBunnyHopCombo(bunnyHopRef.current.streak);
 
           // Base jump + bonus from streak
-          const jumpBonus = bunnyHopRef.current.streak * 0.5;
+          const jumpBonus = bunnyHopRef.current.streak * 1.5;
           newChaser.vy = -14 - jumpBonus;
 
           // Apply accumulated speed in movement direction
@@ -1377,7 +1377,7 @@ export default function NinjaGame() {
           if (keys.up) newChaser.vy = -6;
           if (keys.jump || keys.up) {
             // Apply bunny hop bonus to wall jump!
-            const jumpBonus = bunnyHopRef.current.streak * 0.5;
+            const jumpBonus = bunnyHopRef.current.streak * 1.5;
             const speedBonus = bunnyHopRef.current.speed * 0.4; // 40% of accumulated horizontal speed
 
             newChaser.vy = -12 - jumpBonus;
@@ -1860,7 +1860,7 @@ export default function NinjaGame() {
           setBunnyHopCombo(bunnyHopRef.current.streak);
 
           // Base jump + bonus from streak
-          const jumpBonus = bunnyHopRef.current.streak * 0.5;
+          const jumpBonus = bunnyHopRef.current.streak * 1.5;
           newChaser.vy = -14 - jumpBonus;
 
           // Apply accumulated speed in movement direction
